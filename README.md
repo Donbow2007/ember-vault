@@ -43,6 +43,71 @@ bin/jobs
 
 Open <http://localhost:3000>. Browser geolocation works on localhost; remote deployments normally require HTTPS.
 
+## Automated installation
+
+Ember Vault includes installers that provision dependencies, prepare the production databases and assets, register a background service, and start the application.
+
+Raspberry Pi OS, Debian, or Ubuntu:
+
+```bash
+git clone https://github.com/Donbow2007/ember-vault.git
+cd ember-vault
+script/install/linux.sh
+```
+
+macOS:
+
+```bash
+git clone https://github.com/Donbow2007/ember-vault.git
+cd ember-vault
+script/install/macos.sh
+```
+
+Windows PowerShell:
+
+```powershell
+git clone https://github.com/Donbow2007/ember-vault.git
+cd ember-vault
+powershell -ExecutionPolicy Bypass -File script/install/windows.ps1
+```
+
+The Raspberry Pi target is a Pi 3 Model B running 64-bit Raspberry Pi OS Lite. Native Windows ZIM indexing additionally requires `zimdump` on `PATH`; PDF, text, map, search, and source-assistant features do not depend on it.
+
+## Updates and recovery
+
+Open **System** in the application to check GitHub and queue an update. Installation is restricted to requests made from the Ember Vault device unless `ALLOW_REMOTE_UPDATES=1` is deliberately configured.
+
+The command-line equivalent is:
+
+```bash
+bin/ember-vault update
+```
+
+The updater:
+
+- refuses to overwrite tracked local source changes;
+- accepts only a fast-forward update from `origin/main`;
+- stops a launcher-managed server before copying databases;
+- backs up every SQLite database under `storage/backups`;
+- installs dependencies, prepares databases, and precompiles assets;
+- restarts the server and verifies the local `/up` health endpoint;
+- restores the prior Git revision and database backup after a failed health check.
+
+Downloaded archives, imported documents, maps, indexes, secrets, logs, and databases remain under the ignored storage directory and are never pulled from or pushed to GitHub.
+
+Runtime commands:
+
+```bash
+bin/ember-vault setup
+bin/ember-vault start
+bin/ember-vault stop
+bin/ember-vault restart
+bin/ember-vault status
+bin/ember-vault update
+```
+
+Automatic update checks require temporary access to `api.github.com` and update installation requires `github.com`. All archive reading, search, maps, and Field Intel remain offline.
+
 ## Verification
 
 ```bash

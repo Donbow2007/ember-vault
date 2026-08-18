@@ -9,8 +9,8 @@
       <%= link_to mod[:name], mod[:path], class: [ "module-nav-link", ("active" if controller_name == mod[:controller]) ] %>
     <% end %>
     <%= link_to "Transfers", downloads_path, class: ("active" if controller_name == "downloads") %>
-    <%= link_to "Field Intel", root_path(anchor: "intel") %>
-    <%= link_to "System", root_path(anchor: "system") %>
+    <%= link_to "Field Intel", assistant_path, class: ("active" if controller_name == "assistant") %>
+    <%= link_to "System", updates_path, class: ("active" if controller_name == "updates") %>
   </nav>
   <div class="network-state"><span></span> AIR-GAPPED <b>ONLINE</b></div>
 </header>
