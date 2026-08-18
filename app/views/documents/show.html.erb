@@ -1,0 +1,42 @@
+<% content_for :title, "#{@document.title} — Ember Vault" %>
+<div class="archive-shell">
+  <main class="document-page">
+    <% if notice %><p class="flash notice"><%= notice %></p><% end %>
+    <section class="document-header">
+      <p class="section-index"><%= @document.original_filename %></p>
+      <h1><%= @document.title %></h1>
+      <dl>
+        <div><dt>SIZE</dt><dd><%= number_to_human_size(@document.byte_size) %></dd></div>
+        <div><dt>INDEX</dt><dd><%= pluralize(@document.passage_count, "PASSAGE") %></dd></div>
+        <div><dt>IMPORTED</dt><dd><%= @document.created_at.strftime("%Y-%m-%d %H:%M") %></dd></div>
+      </dl>
+      <%= form_with url: search_path, method: :get, class: "mini-search" do |form| %>
+        <%= form.search_field :q, placeholder: "SEARCH ALL DOCUMENTS" %><%= form.submit "SEARCH" %>
+      <% end %>
+    </section>
+    <% if @document.status == "failed" %><p class="flash alert"><%= @document.error_message %></p><% end %>
+    <% if @focused_passage %>
+      <div class="focused-passage-note"><span>SEARCH MATCH // PASSAGE <%= @focused_passage.position + 1 %></span><%= link_to "VIEW FROM BEGINNING", document_path(@document) %></div>
+    <% end %>
+    <% if @source_html.present? || @source_page_url.present? %>
+      <section class="original-source">
+        <header><div><span>ORIGINAL DOCUMENT</span><b><%= @focused_passage.source_path %><%= " · PAGE #{@focused_passage.source_page}" if @focused_passage.source_page %></b></div><small>LOCAL ZIM SOURCE</small></header>
+        <% if @source_html.present? %>
+          <div class="source-fragment"><%= @source_html %></div>
+        <% else %>
+          <div class="source-pdf-page"><img src="<%= @source_page_url %>" alt="Original PDF page <%= @focused_passage.source_page %>"><%= link_to "OPEN COMPLETE PDF", @source_pdf_url, class: "source-pdf-link", target: "_blank", rel: "noopener" %></div>
+        <% end %>
+      </section>
+    <% elsif @source_error %>
+      <p class="flash alert source-error">Original source could not be displayed: <%= @source_error %></p>
+    <% end %>
+    <section class="passage-reader">
+      <% @passages.each do |passage| %>
+        <article id="passage-<%= passage.id %>" class="<%= "focused" if passage == @focused_passage %>">
+          <span><%= format("%03d", passage.position + 1) %></span>
+          <div><h2><%= passage.heading %></h2><p><%= passage.body %></p></div>
+        </article>
+      <% end %>
+    </section>
+  </main>
+</div>

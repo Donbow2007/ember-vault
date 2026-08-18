@@ -1,0 +1,23 @@
+<% content_for :title, "World Atlas — Ember Vault" %>
+<div class="atlas-index">
+  <main>
+    <div class="wizard-intro">
+      <p class="section-index">ATLAS // LOCAL REGIONS</p>
+      <h1>Navigate beyond the signal.</h1>
+      <p>Every region below is stored locally and opens without an internet connection.</p>
+    </div>
+    <div class="atlas-region-grid">
+      <% @maps.each do |map| %>
+        <%= link_to map_path(map), class: "atlas-region-card" do %>
+          <small>PMTILES // <%= number_to_human_size(map.downloaded_bytes) %></small>
+          <h2><%= map.title %></h2>
+          <p><%= File.basename(map.destination_path.to_s) %> · <%= pluralize(map.map_features.count, "INDEXED NAME") %></p>
+          <span>OPEN REGION →</span>
+        <% end %>
+      <% end %>
+      <% if @maps.empty? %>
+        <div class="empty-archive"><b>NO MAPS SECURED</b><p>Select map regions in setup and allow their downloads to complete.</p></div>
+      <% end %>
+    </div>
+  </main>
+</div>

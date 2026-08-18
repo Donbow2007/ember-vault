@@ -1,0 +1,26 @@
+<% content_for :title, "Downloads — Ember Vault" %>
+<% content_for :head do %><meta name="turbo-cache-control" content="no-cache"><% end %>
+<div class="archive-shell">
+  <main class="archive-page">
+    <% if notice %><p class="flash notice"><%= notice %></p><% end %>
+    <% if alert %><p class="flash alert"><%= alert %></p><% end %>
+    <section class="content-discovery">
+      <div class="discovery-heading"><p class="section-index">CONTENT // DISCOVERY TERMINAL</p><h1>Find what survives.</h1><p>Search the bundled catalog or temporarily connect to approved open repositories. Installed files remain local and are indexed automatically.</p></div>
+      <div class="discovery-source">
+        <div><small>01 // BUNDLED OPTIONS</small><h2>Search the current catalog.</h2><p>Kiwix archives and map packages already approved for Ember Vault.</p></div>
+        <%= form_with url: downloads_path, method: :get, class: "discovery-search" do |form| %><%= form.search_field :catalog_q, value: @catalog_query, placeholder: "TOPIC — WATER, MEDICINE, REPAIR...", required: true %><%= form.submit "SEARCH LOCAL CATALOG" %><% end %>
+        <%= render "discovery_results", results: @catalog_results, query: @catalog_query %>
+      </div>
+      <div class="discovery-source remote">
+        <div><small>02 // ONLINE BOOK DISCOVERY</small><h2>Search public books.</h2><p>Open Library book records with public full-text files supplied by Internet Archive. Papers, journals, and lending-only titles are excluded. Network is used only for this search and selected downloads.</p></div>
+        <%= form_with url: downloads_path, method: :get, class: "discovery-search" do |form| %><%= form.search_field :remote_q, value: @remote_query, placeholder: "TYPE A TOPIC TO FIND PUBLIC BOOKS", required: true %><%= form.submit "SEARCH PUBLIC BOOKS" %><% end %>
+        <%= render "discovery_results", results: @remote_results, query: @remote_query %>
+      </div>
+    </section>
+    <div class="wizard-intro"><p class="section-index">CONTENT // TRANSFER QUEUE</p><h1>Incoming resources.</h1><p>Transfer progress updates automatically while this screen is open.</p><% if @downloads.failed.exists? %><%= button_to "RETRY FAILED DOWNLOADS", retry_failed_downloads_path, class: "button button-light retry-downloads" %><% end %></div>
+    <% active = @downloads.any?(&:active?) %>
+    <div id="download_queue" data-controller="download-progress" data-download-progress-url-value="<%= status_downloads_path %>" data-active="<%= active %>">
+      <%= render "queue_contents", downloads: @downloads %>
+    </div>
+  </main>
+</div>

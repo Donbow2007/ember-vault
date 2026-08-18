@@ -1,0 +1,42 @@
+<section class="search-response">
+  <% total_results = @results.size + @map_results.size %>
+  <p class="section-index">SEARCH // <%= pluralize(total_results, "MATCH") %></p>
+  <h2>Results for “<%= @query %>”</h2>
+  <% if total_results.positive? %>
+    <section class="search-result-group document-search-results">
+      <div class="search-group-heading"><span>01 // INDEXED ARTICLES & DOCUMENTS</span><b><%= pluralize(@results.size, "PASSAGE") %></b></div>
+      <% if @results.any? %>
+        <div class="result-list">
+          <% @results.each do |passage| %>
+            <article>
+              <div><span><%= passage.document.original_filename %></span><b>PASSAGE <%= passage.position + 1 %></b></div>
+              <h3><%= link_to passage.heading, document_path(passage.document, passage_id: passage.id, anchor: "passage-#{passage.id}"), data: { turbo_frame: "_top" } %></h3>
+              <p><%= sanitize passage.excerpt, tags: ["mark"] %></p>
+            </article>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="search-group-empty">No indexed article or document passage matched this query.</p>
+      <% end %>
+    </section>
+    <section class="search-result-group map-search-results">
+      <div class="search-group-heading"><span>02 // OFFLINE MAP INDEX</span><b><%= pluralize(@map_results.size, "PLACE") %></b></div>
+      <% if @map_results.any? %>
+        <div class="result-list">
+          <% @map_results.each do |feature| %>
+            <article class="map-search-result">
+              <div><span><%= feature.content_download.title %></span><b>MAP // <%= feature.category.upcase %></b></div>
+              <h3><%= link_to feature.name, map_path(feature.content_download, feature_id: feature.id), data: { turbo_frame: "_top" } %></h3>
+              <p><%= feature.kind.to_s.humanize %> · <%= number_with_precision(feature.latitude, precision: 5) %>, <%= number_with_precision(feature.longitude, precision: 5) %> · OPEN OFFLINE MAP</p>
+            </article>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="search-group-empty">No offline map name matched this query.</p>
+      <% end %>
+    </section>
+  <% else %>
+    <p>No indexed document passage or geographic name matched. Try fewer or broader words.</p>
+    <%= link_to "OPEN ARCHIVE", documents_path, class: "button button-light", data: { turbo_frame: "_top" } %>
+  <% end %>
+</section>

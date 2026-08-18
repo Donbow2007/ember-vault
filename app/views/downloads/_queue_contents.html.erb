@@ -1,0 +1,11 @@
+<% active = downloads.any?(&:active?) %>
+<div class="queue-status" data-downloads-active="<%= active %>"><span><i></i> LIVE TRANSFER TELEMETRY</span><small>UPDATES EVERY 2 SECONDS</small></div>
+<div class="download-list">
+  <% downloads.each do |download| %>
+    <article>
+      <div><small><%= download.kind.upcase %> // <%= download.resource_id %></small><h2><%= download.title %></h2><p><%= download.status == "failed" ? download.error_message : download.source_url %></p></div>
+      <div class="download-meter"><span><%= download.status.tr("_", " ").upcase %> · <%= download.progress %>%</span><i><b style="width:<%= download.progress %>%"></b></i><small><%= number_to_human_size(download.downloaded_bytes) %> / <%= number_to_human_size(download.display_total_bytes) %></small><div class="download-actions"><% if download.status.in?(%w[queued downloading]) %><%= button_to "STOP", stop_download_path(download), class: "transfer-action" %><% elsif download.status.in?(%w[cancelled failed]) %><%= button_to "RESTART", retry_download_download_path(download), class: "transfer-action" %><% end %><%= button_to "DELETE", download_path(download), method: :delete, class: "transfer-action danger", form: { data: { turbo_confirm: "Delete this download, its files, and all associated search indexes?" } } %></div></div>
+    </article>
+  <% end %>
+  <% if downloads.empty? %><div class="empty-archive"><b>TRANSFER QUEUE EMPTY</b><p>Run initial setup to select public content packages.</p></div><% end %>
+</div>

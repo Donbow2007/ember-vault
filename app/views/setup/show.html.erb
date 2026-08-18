@@ -1,0 +1,47 @@
+<% content_for :title, "Initial Setup — Ember Vault" %>
+<div class="wizard-shell" data-controller="wizard">
+  <header class="wizard-header"><%= link_to "EMBER VAULT", root_path, class: "wizard-logo" %><div class="wizard-steps"><% %w[Capabilities Maps Library AI Review].each_with_index do |label, index| %><button type="button" data-wizard-target="indicator" data-action="wizard#go" data-step="<%= index %>" class="<%= "active" if index.zero? %>"><b>0<%= index + 1 %></b><span><%= label %></span></button><% end %></div><span>EV // CONFIG</span></header>
+
+  <%= form_with url: setup_path, method: :post, class: "wizard-form", data: { wizard_target: "form" } do %>
+    <section class="wizard-step active" data-wizard-target="step">
+      <div class="wizard-intro"><p class="section-index">STEP 01 // CORE CAPABILITIES</p><h1>Choose your systems.</h1><p>Select the local services this node should prepare. Content selections come next.</p></div>
+      <div class="choice-grid capabilities">
+        <% [{ id: "information", name: "Information Library", tech: "KIWIX", copy: "Offline Wikipedia, medical references, field manuals, and books.", checked: true }, { id: "education", name: "Education Platform", tech: "KOLIBRI", copy: "Interactive courses, exercises, and learner progress tracking." }].each do |item| %>
+          <label class="choice-card"><%= check_box_tag "capabilities[]", item[:id], item[:checked], data: { action: "wizard#update" } %><span class="choice-check"></span><small><%= item[:tech] %></small><h2><%= item[:name] %></h2><p><%= item[:copy] %></p></label>
+        <% end %>
+      </div>
+      <div class="appearance-setting">
+        <div><p class="section-index">APPEARANCE // DISPLAY MODE</p><h2>Choose interface theme.</h2><p>Both themes use only local artwork and assets.</p></div>
+        <div class="theme-options">
+          <label><%= radio_button_tag :theme, "dark", @theme == "dark" %><span><i class="theme-preview dark-preview"></i><b>DARK MODE</b><small>LOW-LIGHT COMMAND INTERFACE</small></span></label>
+          <label><%= radio_button_tag :theme, "light", @theme == "light" %><span><i class="theme-preview light-preview"></i><b>LIGHT MODE</b><small>HIGH-VISIBILITY DAYLIGHT INTERFACE</small></span></label>
+        </div>
+      </div>
+    </section>
+
+    <section class="wizard-step" data-wizard-target="step">
+      <div class="wizard-intro"><p class="section-index">STEP 02 // OFFLINE MAPS</p><h1>Select operational regions.</h1><p>These are the same public PMTiles packages listed by Project NOMAD.</p></div>
+      <div class="choice-grid maps"><% @catalog.maps.each do |collection| %><% size = collection.fetch("resources").sum { |r| r.fetch("size_mb", 0) } %><label class="choice-card compact"><%= check_box_tag "packages[]", "map:#{collection.fetch("slug")}", false, data: { size: size, action: "wizard#update" } %><span class="choice-check"></span><small><%= number_to_human_size(size.megabytes) %></small><h2><%= collection.fetch("name") %></h2><p><%= collection.fetch("description") %></p></label><% end %></div>
+    </section>
+
+    <section class="wizard-step" data-wizard-target="step">
+      <div class="wizard-intro"><p class="section-index">STEP 03 // KNOWLEDGE LOADOUT</p><h1>Build the archive.</h1><p>Choose one tier from each curated Kiwix category, plus an optional Wikipedia edition.</p></div>
+      <div class="catalog-sections"><% @catalog.categories.each do |category| %><article class="catalog-category"><div><small><%= category.fetch("language", "en").upcase %></small><h2><%= category.fetch("name") %></h2><p><%= category.fetch("description") %></p></div><div class="tier-options"><% category.fetch("tiers").each do |tier| %><% size = tier.fetch("resources", []).sum { |r| r.fetch("size_mb", 0) } %><label data-action="pointerdown->wizard#rememberRadio"><%= radio_button_tag "tiers[#{category.fetch("slug")} ]", "tier:#{category.fetch("slug")}:#{tier.fetch("slug")}", false, data: { size: size, action: "keydown.space->wizard#rememberRadio click->wizard#toggleRadio" } %><span><b><%= tier.fetch("name") %></b><small><%= number_to_human_size(size.megabytes) %></small></span></label><% end %></div></article><% end %>
+        <article class="catalog-category wikipedia"><div><small>REFERENCE</small><h2>Wikipedia</h2><p>Choose an English-language offline edition.</p></div><div class="tier-options"><% @catalog.wikipedia.each do |option| %><label data-action="pointerdown->wizard#rememberRadio"><%= radio_button_tag "wikipedia", "wikipedia:#{option.fetch("id")}", option.fetch("id") == "none", data: { size: option.fetch("size_mb"), action: "keydown.space->wizard#rememberRadio click->wizard#toggleRadio" } %><span><b><%= option.fetch("name") %></b><small><%= number_to_human_size(option.fetch("size_mb").megabytes) %></small></span></label><% end %></div></article>
+      </div>
+    </section>
+
+    <section class="wizard-step" data-wizard-target="step">
+      <div class="wizard-intro"><p class="section-index">STEP 04 // OFFLINE AI</p><h1>Select local intelligence.</h1><p>Choose a specific lightweight model or keep generative AI disabled. Search works in every mode.</p></div>
+      <div class="ai-profile selectable"><% @ai_profiles.each do |id, profile| %><label data-action="pointerdown->wizard#rememberRadio"><%= radio_button_tag :ai_profile, id, id == "disabled", data: { size: profile.fetch(:size_mb), action: "keydown.space->wizard#rememberRadio click->wizard#toggleRadio" } %><span class="ai-select"><i></i><small><%= id == "disabled" ? "SEARCH ONLY" : "OFFLINE MODEL" %></small><h2><%= profile.fetch(:name) %></h2><p><%= profile.fetch(:description) %></p><dl><div><dt>MODEL</dt><dd><%= profile.fetch(:model) || "NONE" %></dd></div><div><dt>DOWNLOAD</dt><dd><%= number_to_human_size(profile.fetch(:size_mb).megabytes) %></dd></div><div><dt>MIN. RAM</dt><dd><%= profile.fetch(:ram) %></dd></div></dl></span></label><% end %></div>
+    </section>
+
+    <section class="wizard-step review-step" data-wizard-target="step">
+      <div class="wizard-intro"><p class="section-index">STEP 05 // FINAL REVIEW</p><h1>Seal the loadout.</h1><p>Confirming will create download jobs for every selected catalog resource.</p></div>
+      <div class="storage-readout"><div><span>PROJECTED DOWNLOAD</span><strong data-wizard-target="total">0 MB</strong></div><div><span>AVAILABLE STORAGE</span><strong><%= number_to_human_size(@disk_free_mb.megabytes) %></strong></div><div class="storage-track"><i data-wizard-target="bar"></i></div><p data-wizard-target="summary">No content packages selected.</p></div>
+      <div class="warning-panel"><b>DOWNLOAD AUTHORIZATION</b><p>Some complete collections exceed 50 GB. Downloads use the public upstream URLs in the vendored catalog and may take considerable time. You can monitor them after setup.</p></div>
+    </section>
+
+    <footer class="wizard-controls"><button type="button" class="button button-ghost" data-action="wizard#back" data-wizard-target="back" disabled>BACK</button><div><span data-wizard-target="counter">01 / 05</span><button type="button" class="button button-light" data-action="wizard#next" data-wizard-target="next">CONTINUE</button><%= submit_tag "CONFIRM & QUEUE DOWNLOADS", class: "button button-light finish-button", data: { wizard_target: "finish" } %></div></footer>
+  <% end %>
+</div>

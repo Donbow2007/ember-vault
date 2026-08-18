@@ -1,0 +1,18 @@
+<% content_for :title, "#{@map_download.title} — World Atlas" %>
+<% content_for :head do %>
+  <%= javascript_include_tag "maplibre-gl", defer: true %>
+  <%= javascript_include_tag "pmtiles", defer: true %>
+<% end %>
+<div class="atlas-shell" data-controller="atlas" data-atlas-url-value="<%= archive_map_path(@map_download) %>" data-atlas-search-url-value="<%= search_map_path(@map_download) %>" data-atlas-title-value="<%= @map_download.title %>"<% if @selected_feature %> data-atlas-initial-latitude-value="<%= @selected_feature.latitude %>" data-atlas-initial-longitude-value="<%= @selected_feature.longitude %>" data-atlas-initial-name-value="<%= @selected_feature.name %>"<% end %>>
+  <aside>
+    <%= link_to "← REGIONS", maps_path, class: "atlas-back" %>
+    <p class="section-index">WORLD ATLAS // LOCAL</p><h1><%= @map_download.title %></h1>
+    <p class="atlas-copy">Topographic vector map and geographic name index stored entirely on this node.</p>
+    <button type="button" class="atlas-locate-button" data-action="click->atlas#locateDevice" data-atlas-target="locateButton">◎ LOCATE ME</button>
+    <form data-action="submit->atlas#search"><input type="search" placeholder="ADDRESS, CITY, ROAD, OR PLACE" data-atlas-target="query"><button>LOCATE</button></form>
+    <div data-atlas-target="results" class="atlas-results"><% if @selected_feature %><p><b><%= @selected_feature.name %></b><br><%= @selected_feature.category.upcase %> // <%= @selected_feature.kind.to_s.upcase %></p><% else %><p>Search an address or find cities, towns, roads, water, and landmarks throughout this region.</p><% end %></div>
+    <footer><span>NETWORK</span><b>OFFLINE</b><span>SOURCE</span><b>OPENSTREETMAP</b></footer>
+  </aside>
+  <main id="atlas_map" data-atlas-target="map"></main>
+  <div class="atlas-coordinates" data-atlas-target="coordinates">--.----- / --.-----</div>
+</div>

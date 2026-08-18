@@ -1,0 +1,60 @@
+<% content_for :title, "Archive — Ember Vault" %>
+<div class="archive-shell">
+  <main class="archive-page">
+    <% if notice %><p class="flash notice"><%= notice %></p><% end %>
+    <% if alert %><p class="flash alert"><%= alert %></p><% end %>
+    <section class="import-panel">
+      <div><p class="section-index">ARCHIVE // INGESTION</p><h1>Preserve a document.</h1><p>Its complete readable text will be divided into passages and added to the local full-text index.</p></div>
+      <%= form_with url: documents_path, method: :post, multipart: true, class: "upload-form" do |form| %>
+        <%= form.text_field :title, placeholder: "OPTIONAL DISPLAY TITLE", aria: { label: "Optional display title" } %>
+        <label><span>SELECT FILE</span><%= form.file_field :file, required: true, accept: ".txt,.md,.markdown,.html,.htm,.csv,.json,.pdf" %></label>
+        <%= form.submit "IMPORT & INDEX" %><small>TXT · MD · HTML · CSV · JSON · PDF / MAX 20 MB</small>
+      <% end %>
+    </section>
+    <section class="document-list unified-inventory">
+      <div class="list-heading">
+        <div><p class="section-index">LOCAL // UNIFIED INVENTORY</p><p class="inventory-note">Downloaded packages and imported documents. Index controls change searchable text without deleting downloaded source files.</p></div>
+        <div class="inventory-tools">
+          <%= form_with url: search_path, method: :get, class: "mini-search" do |form| %><%= form.search_field :q, placeholder: "SEARCH ARCHIVE" %><%= form.submit "SEARCH" %><% end %>
+          <%= button_to "REINDEX ALL DOWNLOADS", reindex_all_downloads_path, class: "button button-light", form: { data: { turbo_confirm: "Rebuild the search indexes for every completed document download?" } } %>
+          <%= link_to "DOWNLOADS", downloads_path, class: "button button-ghost" %>
+        </div>
+      </div>
+      <% if @inventory.any? %>
+        <div class="document-table">
+          <% @inventory.each do |_created_at, type, item| %>
+            <% if type == :download %>
+              <% indexed_document = item.documents.first %>
+              <% map_index_count = item.kind == "map" ? item.map_features.count : nil %>
+              <article class="inventory-download">
+                <div class="file-glyph"><%= item.kind.upcase.first(4) %></div>
+                <div class="file-main"><h2><%= indexed_document ? link_to(item.title, document_path(indexed_document)) : item.title %></h2><p>DOWNLOADED · <%= File.basename(item.destination_path.to_s) %> · <%= number_to_human_size(item.downloaded_bytes) %></p></div>
+                <span class="file-status ready">DOWNLOADED</span>
+                <span class="index-state"><%= map_index_count ? pluralize(map_index_count, "MAP NAME") : (indexed_document ? pluralize(indexed_document.passage_count, "PASSAGE") : "NOT INDEXED") %></span>
+                <div class="index-actions">
+                  <% if item.kind.in?(%w[zim document]) %>
+                    <%= button_to indexed_document ? "REINDEX" : "INDEX", index_content_download_path(item), class: "remove-button" %>
+                    <% if indexed_document %><%= button_to "REMOVE INDEX", search_index_download_path(item), method: :delete, class: "remove-button danger", form: { data: { turbo_confirm: "Remove all searchable passages for #{item.title}? The downloaded file will be kept." } } %><% end %>
+                  <% else %>
+                    <%= link_to "OPEN MAP", map_path(item), class: "remove-button" %>
+                    <%= button_to "REINDEX MAP", reindex_map_path(item), class: "remove-button" %>
+                  <% end %>
+                </div>
+              </article>
+            <% else %>
+              <article class="inventory-document">
+                <div class="file-glyph"><%= File.extname(item.original_filename).delete(".").first(4).upcase %></div>
+                <div class="file-main"><h2><%= link_to item.title, document_path(item) %></h2><p>IMPORTED · <%= item.original_filename %> · <%= number_to_human_size(item.byte_size) %></p></div>
+                <span class="file-status <%= item.status %>"><%= item.status.upcase %></span>
+                <span><%= pluralize(item.passage_count, "PASSAGE") %></span>
+                <%= button_to "REMOVE", document_path(item), method: :delete, class: "remove-button", form: { data: { turbo_confirm: "Remove this document and its search index?" } } %>
+              </article>
+            <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="empty-archive"><b>NO DOCUMENTS SECURED</b><p>Import a file or complete a setup download to create the first archive entry.</p></div>
+      <% end %>
+    </section>
+  </main>
+</div>

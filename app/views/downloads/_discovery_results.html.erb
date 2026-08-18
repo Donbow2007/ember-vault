@@ -1,0 +1,12 @@
+<% if results.present? %>
+  <div class="discovery-results">
+    <% results.each do |result| %>
+      <article>
+        <div><small><%= result.source.upcase %> // <%= result.kind.upcase %></small><h3><%= result.title %></h3><p><%= result.creator.presence || result.description.presence || "Offline knowledge resource" %></p><span><%= result.license %><% if result.size_bytes.to_i.positive? %> · <%= number_to_human_size(result.size_bytes) %><% end %></span></div>
+        <%= button_to "INSTALL", install_downloads_path, params: { token: result.token }, class: "discovery-install" %>
+      </article>
+    <% end %>
+  </div>
+<% elsif query.present? %>
+  <div class="discovery-empty">NO AVAILABLE, NOT-YET-DOWNLOADED RESULTS MATCHED “<%= query %>”.</div>
+<% end %>
