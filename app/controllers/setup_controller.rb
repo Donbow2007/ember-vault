@@ -2,9 +2,9 @@ require "open3"
 
 class SetupController < ApplicationController
   AI_PROFILES = {
-    "disabled" => { name: "No generative AI", model: nil, size_mb: 0, ram: "< 1 GB", description: "Use fast full-text search and exact source passages only." },
-    "llama3.2-1b" => { name: "Llama 3.2 1B", model: "llama3.2:1b-text-q2_K", size_mb: 581, ram: "3 GB", description: "Smallest recommended general assistant for low-power hardware." },
-    "deepseek-r1-1.5b" => { name: "DeepSeek R1 1.5B", model: "deepseek-r1:1.5b", size_mb: 1_126, ram: "4 GB", description: "Compact reasoning model with moderately higher memory use." }
+    "disabled" => { name: "Search only", model: nil, size_mb: 0, ram: "< 512 MB", description: "Use full-text search and open exact source passages without an answer assistant." },
+    "source-assistant" => { name: "Cited source assistant", model: nil, size_mb: 0, ram: "512 MB", description: "Recommended for Raspberry Pi 3 B. Builds quick answers from retrieved passages and always links the original sources." },
+    "smollm2-135m" => { name: "SmolLM2 135M", model: "SmolLM2-135M-Instruct-Q4_K_S.gguf", size_mb: 102, ram: "768 MB + swap", description: "Experimental Pi 3 summaries. Runs on demand with strict limits and falls back to the cited source assistant." }
   }.freeze
 
   def show

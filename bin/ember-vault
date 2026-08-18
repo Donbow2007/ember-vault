@@ -1,0 +1,24 @@
+#!/usr/bin/env ruby
+
+require_relative "../lib/ember_vault/runtime"
+
+begin
+command = ARGV.shift || "status"
+runtime = EmberVault::Runtime.new
+
+case command
+when "setup" then runtime.setup
+when "run" then runtime.run_foreground
+when "start" then runtime.start
+when "stop" then runtime.stop
+when "restart" then runtime.restart
+when "status" then runtime.status
+when "update" then runtime.update
+else
+  warn "Usage: bin/ember-vault [setup|run|start|stop|restart|status|update]"
+  exit 64
+end
+rescue StandardError => error
+  warn "ERROR: #{error.message}"
+  exit 1
+end
