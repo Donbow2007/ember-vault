@@ -1,7 +1,15 @@
 Rails.application.routes.draw do
   root "dashboard#index"
   get "search", to: "dashboard#index"
+  get "assistant", to: "assistant#show", as: :assistant
+  post "assistant", to: "assistant#create"
+  get "assistant/responses/:id", to: "assistant#status", as: :assistant_response
+  post "assistant/responses/:id/cancel", to: "assistant#cancel", as: :cancel_assistant_response
   patch "settings/theme", to: "settings#theme", as: :theme_setting
+  resource :updates, only: :show, controller: "updates" do
+    post :check
+    post :install
+  end
   resources :maps, only: [ :index, :show ] do
     get :archive, on: :member
     get :search, on: :member

@@ -15,6 +15,9 @@ class DocumentsControllerTest < ActionDispatch::IntegrationTest
       destination_path: "storage/content/map/downloaded-map.pmtiles", downloaded_bytes: 1.megabyte)
     map.map_features.create!(name: "Test Town", category: "places", kind: "locality",
       latitude: 34.7, longitude: -92.3)
+    ContentDownload.create!(resource_id: "smollm2-135m", title: "SmolLM2 Model",
+      source_url: "https://huggingface.co/model.gguf", kind: "model", status: "complete",
+      destination_path: "storage/models/smollm2-135m.gguf", downloaded_bytes: 102.megabytes)
 
     get documents_url
 
@@ -23,6 +26,7 @@ class DocumentsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".unified-inventory article", count: 3
     assert_select ".unified-inventory h2", text: "Downloaded Guide", count: 1
     assert_select ".unified-inventory h2", text: "Imported Notes", count: 1
+    assert_select ".unified-inventory", text: /SmolLM2 Model/, count: 0
     assert_select "form[action='#{index_content_download_path(download)}']"
     assert_select "form[action='#{reindex_all_downloads_path}']"
     assert_select "form[action='#{reindex_map_path(map)}']"

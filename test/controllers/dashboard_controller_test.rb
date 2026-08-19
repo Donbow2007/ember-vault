@@ -6,6 +6,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", /When the signal/
     assert_select "form.search-console"
+    assert_select "form.terminal-prompt[action='#{assistant_path}'] input[name='question']"
     assert_select "nav.primary-nav .module-nav-link", count: 0
     assert_select "nav.primary-nav", text: /Manuals/, count: 0
     assert_select ".metric", text: /DEVICE STORAGE.*USED.*FREE/m

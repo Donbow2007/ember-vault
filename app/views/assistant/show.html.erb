@@ -1,0 +1,19 @@
+<% content_for :title, "Ask the Archive — Ember Vault" %>
+<main class="assistant-results-page">
+  <header class="assistant-search-header">
+    <div><p class="section-index">FIELD INTEL // OFFLINE SOURCE ASSISTANT</p><h1>Ask the archive.</h1><p>Ask naturally. Ember retrieves local evidence first, then answers without contacting the internet.</p></div>
+    <span><b></b> LOCAL · READY</span>
+  </header>
+
+  <%= form_with url: assistant_path, method: :post, class: "assistant-search-input" do |form| %>
+    <span class="search-icon" aria-hidden="true"></span>
+    <%= form.search_field :question, value: @question, placeholder: "ASK A QUESTION ABOUT YOUR ARCHIVE...", aria: { label: "Ask the archive" }, required: true, autofocus: @question.blank?, autocomplete: "off", maxlength: 500 %>
+    <%= form.submit "ASK" %>
+  <% end %>
+
+  <% if @response %>
+    <%= render "response", response: @response %>
+  <% else %>
+    <section class="assistant-suggestions"><p class="section-index">TRY ASKING</p><div><%= button_to "How can I make water safe to drink?", assistant_path, params: { question: "How can I make water safe to drink?" } %><%= button_to "What should go in an emergency kit?", assistant_path, params: { question: "What should go in an emergency kit?" } %><%= button_to "How do I treat a burn?", assistant_path, params: { question: "How do I treat a burn?" } %></div></section>
+  <% end %>
+</main>

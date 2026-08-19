@@ -13,7 +13,7 @@ class ContentFetcher
     end
   end
 
-  ALLOWED_HOSTS = %w[download.kiwix.org archive.download.kiwix.org github.com raw.githubusercontent.com archive.org www.ncbi.nlm.nih.gov].freeze
+  ALLOWED_HOSTS = %w[download.kiwix.org archive.download.kiwix.org github.com raw.githubusercontent.com archive.org www.ncbi.nlm.nih.gov huggingface.co].freeze
   MAX_REDIRECTS = 5
   BLOCKED_NETWORKS = %w[
     0.0.0.0/8 10.0.0.0/8 100.64.0.0/10 127.0.0.0/8 169.254.0.0/16 172.16.0.0/12
@@ -106,8 +106,6 @@ class ContentFetcher
   end
 
   def destination_path
-    extension = @download.download_extension
-    safe_id = @download.resource_id.gsub(/[^a-zA-Z0-9_.-]/, "-")
-    Rails.root.join("storage", "content", @download.kind, "#{safe_id}#{extension}")
+    @download.inferred_destination_path
   end
 end

@@ -7,7 +7,8 @@ class DocumentsController < ApplicationController
 
   def index
     @documents = Document.where(content_download_id: nil).order(created_at: :desc)
-    @downloaded_content = ContentDownload.where(status: "complete").includes(:documents).order(created_at: :desc)
+    @downloaded_content = ContentDownload.where(status: "complete", kind: %w[zim document map])
+      .includes(:documents).order(created_at: :desc)
     @inventory = (@downloaded_content.map { |download| [ download.created_at, :download, download ] } +
       @documents.map { |document| [ document.created_at, :document, document ] }).sort_by(&:first).reverse
   end

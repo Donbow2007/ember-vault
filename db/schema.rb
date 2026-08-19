@@ -10,7 +10,20 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_08_18_210000) do
+ActiveRecord::Schema[8.0].define(version: 2026_08_18_213000) do
+  create_table "assistant_responses", force: :cascade do |t|
+    t.text "question", null: false
+    t.text "answer"
+    t.text "source_passage_ids"
+    t.string "status", default: "queued", null: false
+    t.string "response_mode"
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_assistant_responses_on_created_at"
+    t.index ["status"], name: "index_assistant_responses_on_status"
+  end
+
   create_table "content_downloads", force: :cascade do |t|
     t.string "resource_id"
     t.string "title"
