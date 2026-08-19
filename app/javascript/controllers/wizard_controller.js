@@ -1,7 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["step", "indicator", "back", "next", "finish", "counter", "total", "bar", "summary"]
+  static targets = ["step", "indicator", "back", "next", "finish", "counter", "total", "bar", "summary", "storageSelection", "storageSelectionBar", "storageProjectedFree", "storageSummary", "storageTrack"]
+  static values = { storageTotalMb: Number, storageUsedMb: Number, storageFreeMb: Number }
 
   connect() {
     this.position = 0
@@ -38,10 +39,25 @@ export default class extends Controller {
 
   update() {
     const selected = [...this.element.querySelectorAll("input[data-size]:checked")]
+      .filter((input) => Number(input.dataset.size || 0) > 0)
     const megabytes = selected.reduce((total, input) => total + Number(input.dataset.size || 0), 0)
+    const usedPercent = this.storageTotalMbValue > 0 ? (this.storageUsedMbValue / this.storageTotalMbValue) * 100 : 0
+    const selectedPercent = this.storageTotalMbValue > 0 ? (megabytes / this.storageTotalMbValue) * 100 : 0
+    const visibleSelectedPercent = Math.min(selectedPercent, Math.max(100 - usedPercent, 0))
+    const projectedFree = Math.max(this.storageFreeMbValue - megabytes, 0)
+    const exceedsStorage = megabytes > this.storageFreeMbValue
+
     this.totalTarget.textContent = this.formatSize(megabytes)
-    this.barTarget.style.width = `${Math.min((megabytes / 150000) * 100, 100)}%`
+    this.barTarget.style.width = `${Math.min(selectedPercent, 100)}%`
     this.summaryTarget.textContent = selected.length === 0 ? "No content packages selected." : `${selected.length} package selections ready for review.`
+    this.storageSelectionTargets.forEach((target) => { target.textContent = this.formatSize(megabytes) })
+    this.storageSelectionBarTargets.forEach((target) => { target.style.width = `${visibleSelectedPercent}%` })
+    this.storageProjectedFreeTargets.forEach((target) => { target.textContent = this.formatSize(projectedFree) })
+    this.storageTrackTargets.forEach((target) => {
+      target.classList.toggle("over-capacity", exceedsStorage)
+      target.setAttribute("aria-label", `${this.formatSize(this.storageUsedMbValue)} currently used, ${this.formatSize(megabytes)} selected, ${this.formatSize(projectedFree)} projected free`)
+    })
+    this.storageSummaryTargets.forEach((target) => { target.textContent = this.storageMessage(selected.length, megabytes, projectedFree, exceedsStorage) })
   }
 
   render() {
@@ -61,5 +77,12 @@ export default class extends Controller {
   formatSize(megabytes) {
     if (megabytes >= 1024) return `${(megabytes / 1024).toFixed(1)} GB`
     return `${megabytes.toLocaleString()} MB`
+  }
+
+  storageMessage(selectionCount, megabytes, projectedFree, exceedsStorage) {
+    if (selectionCount === 0) return "Choose maps, archive tiers, or a model to preview their storage use."
+    if (exceedsStorage) return `Selected media exceeds available storage by ${this.formatSize(megabytes - this.storageFreeMbValue)}.`
+
+    return `${selectionCount} selections add ${this.formatSize(megabytes)} and leave about ${this.formatSize(projectedFree)} free.`
   }
 }

@@ -27,7 +27,8 @@ class SetupController < ApplicationController
 
   def show
     @catalog = ContentCatalog.new
-    @disk_free_mb = disk_free_mb
+    @disk_usage = disk_usage
+    @disk_free_mb = @disk_usage.fetch(:available).to_f / 1.megabyte
     @ai_profiles = AI_PROFILES
   end
 
@@ -63,8 +64,15 @@ class SetupController < ApplicationController
 
   private
 
-  def disk_free_mb
-    output, status = Open3.capture2("df", "-Pm", Rails.root.to_s)
-    status.success? ? output.lines.last.split[3].to_i : 0
+  def disk_usage
+    output, status = Open3.capture2("df", "-Pk", Rails.root.to_s)
+    fields = output.lines.last.to_s.split
+    return { used: 0, available: 0, total: 0, percent: 0 } unless status.success? && fields.length >= 6
+
+    used = fields[2].to_i.kilobytes
+    available = fields[3].to_i.kilobytes
+    total = used + available
+    percent = total.positive? ? (used.to_f / total * 100).round(2) : 0
+    { used:, available:, total:, percent: }
   end
 end

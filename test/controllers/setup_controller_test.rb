@@ -18,6 +18,10 @@ class SetupControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='theme'][value='light']"
     assert_select "input[type='radio'][data-action*='wizard#toggleRadio']", minimum: 1
     assert_select "label[data-action='pointerdown->wizard#rememberRadio']", minimum: 1
+    assert_select ".archive-storage-planner", count: 2
+    assert_select "[data-wizard-storage-total-mb-value]"
+    assert_select "[data-wizard-target='storageSelectionBar']", count: 2
+    assert_select ".storage-selected", count: 2
   end
 
   test "saves setup and queues selected public resource" do
