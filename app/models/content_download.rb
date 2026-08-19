@@ -50,8 +50,9 @@ class ContentDownload < ApplicationRecord
     paths = []
     paths << Rails.root.join(destination_path).cleanpath if destination_path.present?
     paths << inferred_destination_path
+    allowed_roots = [ Rails.root.join("storage", "content"), Rails.root.join("storage", "models") ].map(&:to_s)
     paths.flat_map { |path| [ path, path.sub_ext("#{path.extname}.part") ] }.uniq.each do |path|
-      next unless path.to_s.start_with?(Rails.root.join("storage", "content").to_s)
+      next unless allowed_roots.any? { |root| path.to_s.start_with?(root) }
 
       File.delete(path) if File.file?(path)
     end
@@ -60,7 +61,8 @@ class ContentDownload < ApplicationRecord
   def inferred_destination_path
     extension = download_extension
     safe_id = resource_id.gsub(/[^a-zA-Z0-9_.-]/, "-")
-    Rails.root.join("storage", "content", kind, "#{safe_id}#{extension}")
+    root = kind == "model" ? Rails.root.join("storage", "models") : Rails.root.join("storage", "content", kind)
+    root.join("#{safe_id}#{extension}")
   end
 
   def download_extension
@@ -69,6 +71,8 @@ class ContentDownload < ApplicationRecord
 
     if kind == "map"
       ".pmtiles"
+    elsif kind == "model"
+      ".gguf"
     elsif kind == "document"
       resource_id.start_with?("pmc-") ? ".json" : ".txt"
     else

@@ -12,6 +12,7 @@ class DashboardController < ApplicationController
     @document_count = Document.where(status: "ready").count
     @passage_count = Passage.count
     @map_count = ContentDownload.where(kind: "map", status: "complete").count
+    @ai_runtime = LocalAiRuntime.new
     disk = disk_usage
     @modules = @navigation_modules
     @metrics = [

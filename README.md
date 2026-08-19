@@ -25,6 +25,7 @@ It downloads approved Kiwix ZIM archives, public full-text books, and PMTiles ma
 - Node.js and npm for the PMTiles geographic indexer
 - `zimdump` from `zim-tools` for reading and indexing ZIM archives
 - `pdftoppm` from Poppler for PDF page previews
+- `llama-completion` from llama.cpp for optional generated answers (the automated installers provide it)
 
 ## Setup
 
@@ -107,6 +108,23 @@ bin/ember-vault update
 ```
 
 Automatic update checks require temporary access to `api.github.com` and update installation requires `github.com`. All archive reading, search, maps, and Field Intel remain offline.
+
+## Offline Field Intel
+
+Field Intel always retrieves passages from the local SQLite FTS5 index and displays a cited source answer immediately. Source-only mode is the recommended Raspberry Pi 3 B profile: it returns complete procedural guidance without model delay or hallucination risk. The optional SmolLM2 135M and 360M profiles may refine that already-visible answer in a one-at-a-time background queue, and preserve the source answer when the runtime is absent, times out, repeats its prompt, omits citations, or introduces unsupported content. While refinement is queued or running, **Stop Response** cancels the job and terminates its local model process.
+
+The setup wizard downloads selected GGUF files into ignored `storage/models`. Model inference uses two CPU threads, a 1,536-token context, 220 output tokens, CPU-only execution, and low process priority by default. These limits can be adjusted for testing:
+
+```bash
+EMBER_VAULT_AI_THREADS=2
+EMBER_VAULT_AI_CONTEXT=1024
+EMBER_VAULT_AI_TOKENS=96
+EMBER_VAULT_AI_TIMEOUT=4
+LLAMA_COMPLETION_PATH=/path/to/llama-completion
+EMBER_VAULT_MODEL_PATH=/path/to/model.gguf
+```
+
+Procedural and hazardous questions bypass model generation and return retrieved source guidance directly. This is intentional: tiny model output is not reliable enough for critical instructions.
 
 ## Verification
 

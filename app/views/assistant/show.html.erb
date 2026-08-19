@@ -1,49 +1,19 @@
 <% content_for :title, "Ask the Archive — Ember Vault" %>
 <main class="assistant-results-page">
   <header class="assistant-search-header">
-    <div><p class="section-index">FIELD INTEL // OFFLINE SOURCE ASSISTANT</p><h1>Ask the archive.</h1><p>Ask a question in plain language. The answer comes only from documents indexed on this device.</p></div>
+    <div><p class="section-index">FIELD INTEL // OFFLINE SOURCE ASSISTANT</p><h1>Ask the archive.</h1><p>Ask naturally. Ember retrieves local evidence first, then answers without contacting the internet.</p></div>
     <span><b></b> LOCAL · READY</span>
   </header>
 
-  <%= form_with url: assistant_path, method: :get, class: "assistant-search-input" do |form| %>
+  <%= form_with url: assistant_path, method: :post, class: "assistant-search-input" do |form| %>
     <span class="search-icon" aria-hidden="true"></span>
-    <%= form.search_field :question, value: @question, placeholder: "ASK A QUESTION ABOUT YOUR ARCHIVE...", aria: { label: "Ask the archive" }, required: true, autofocus: @question.blank?, autocomplete: "off" %>
+    <%= form.search_field :question, value: @question, placeholder: "ASK A QUESTION ABOUT YOUR ARCHIVE...", aria: { label: "Ask the archive" }, required: true, autofocus: @question.blank?, autocomplete: "off", maxlength: 500 %>
     <%= form.submit "ASK" %>
   <% end %>
 
-  <% if @answer %>
-    <section class="assistant-conversation assistant-answer" aria-live="polite">
-      <div class="assistant-response-heading">
-        <div><p class="section-index">RESPONSE // CITED SOURCE EXTRACTION</p><h2><%= @answer.found? ? "Here’s what I found." : "I couldn’t find an answer." %></h2></div>
-        <b><%= pluralize(@answer.sources.size, "SOURCE") %></b>
-      </div>
-
-      <% if @answer.found? %>
-        <div class="assistant-response-copy">
-          <p class="assistant-opening"><%= @answer.sources.one? ? "I found one passage that directly relates to your question:" : "I found several passages that relate to your question. Here is the clearest guidance from your local archive:" %></p>
-          <% @answer.sources.each_with_index do |source, index| %>
-            <p><% if index.positive? %><span><%= index == 1 ? "The archive also says:" : "Another source adds:" %></span><% end %><%= source.quote %><%= link_to "[#{index + 1}]", document_path(source.passage.document, passage_id: source.passage.id, anchor: "passage-#{source.passage.id}"), aria: { label: "Open source #{index + 1}" } %></p>
-          <% end %>
-          <p class="assistant-caution">I assembled this response directly from your indexed documents. For critical decisions, open the sources below and review the full passage.</p>
-        </div>
-
-        <footer class="assistant-source-links">
-          <div class="search-group-heading"><span>SOURCES // OPEN ORIGINAL PASSAGES</span><b><%= pluralize(@answer.sources.size, "LINK") %></b></div>
-          <div class="result-list">
-            <% @answer.sources.each_with_index do |source, index| %>
-              <article>
-                <div><span>SOURCE <%= format("%02d", index + 1) %> · <%= source.passage.document.original_filename %></span><b>PASSAGE <%= source.passage.position + 1 %></b></div>
-                <h3><%= link_to source.passage.heading, document_path(source.passage.document, passage_id: source.passage.id, anchor: "passage-#{source.passage.id}") %></h3>
-                <p><%= source.passage.document.title %> · OPEN THE EXACT SOURCE PASSAGE →</p>
-              </article>
-            <% end %>
-          </div>
-        </footer>
-      <% else %>
-        <div class="assistant-no-answer"><p>I searched the local document index but couldn’t find a passage that supports an answer. Try using fewer words, asking about one subject at a time, or checking whether the relevant download has finished indexing.</p><div><%= link_to "SEARCH DOCUMENTS", root_path, class: "button button-light" %><%= link_to "CHECK DOWNLOADS", downloads_path, class: "button button-ghost" %></div></div>
-      <% end %>
-    </section>
+  <% if @response %>
+    <%= render "response", response: @response %>
   <% else %>
-    <section class="assistant-suggestions"><p class="section-index">TRY ASKING</p><div><%= link_to "How can I make water safe to drink?", assistant_path(question: "How can I make water safe to drink?") %><%= link_to "What should go in an emergency kit?", assistant_path(question: "What should go in an emergency kit?") %><%= link_to "How do I treat a burn?", assistant_path(question: "How do I treat a burn?") %></div></section>
+    <section class="assistant-suggestions"><p class="section-index">TRY ASKING</p><div><%= button_to "How can I make water safe to drink?", assistant_path, params: { question: "How can I make water safe to drink?" } %><%= button_to "What should go in an emergency kit?", assistant_path, params: { question: "What should go in an emergency kit?" } %><%= button_to "How do I treat a burn?", assistant_path, params: { question: "How do I treat a burn?" } %></div></section>
   <% end %>
 </main>

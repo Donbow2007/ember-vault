@@ -1,5 +1,5 @@
 <% content_for :title, "Initial Setup — Ember Vault" %>
-<div class="wizard-shell" data-controller="wizard">
+<div class="wizard-shell" data-controller="wizard" data-wizard-storage-total-mb-value="<%= @disk_usage.fetch(:total).to_f / 1.megabyte %>" data-wizard-storage-used-mb-value="<%= @disk_usage.fetch(:used).to_f / 1.megabyte %>" data-wizard-storage-free-mb-value="<%= @disk_usage.fetch(:available).to_f / 1.megabyte %>">
   <header class="wizard-header"><%= link_to "EMBER VAULT", root_path, class: "wizard-logo" %><div class="wizard-steps"><% %w[Capabilities Maps Library AI Review].each_with_index do |label, index| %><button type="button" data-wizard-target="indicator" data-action="wizard#go" data-step="<%= index %>" class="<%= "active" if index.zero? %>"><b>0<%= index + 1 %></b><span><%= label %></span></button><% end %></div><span>EV // CONFIG</span></header>
 
   <%= form_with url: setup_path, method: :post, class: "wizard-form", data: { wizard_target: "form" } do %>
@@ -21,11 +21,13 @@
 
     <section class="wizard-step" data-wizard-target="step">
       <div class="wizard-intro"><p class="section-index">STEP 02 // OFFLINE MAPS</p><h1>Select operational regions.</h1><p>These are the same public PMTiles packages listed by Project NOMAD.</p></div>
+      <%= render "storage_planner" %>
       <div class="choice-grid maps"><% @catalog.maps.each do |collection| %><% size = collection.fetch("resources").sum { |r| r.fetch("size_mb", 0) } %><label class="choice-card compact"><%= check_box_tag "packages[]", "map:#{collection.fetch("slug")}", false, data: { size: size, action: "wizard#update" } %><span class="choice-check"></span><small><%= number_to_human_size(size.megabytes) %></small><h2><%= collection.fetch("name") %></h2><p><%= collection.fetch("description") %></p></label><% end %></div>
     </section>
 
     <section class="wizard-step" data-wizard-target="step">
       <div class="wizard-intro"><p class="section-index">STEP 03 // KNOWLEDGE LOADOUT</p><h1>Build the archive.</h1><p>Choose one tier from each curated Kiwix category, plus an optional Wikipedia edition.</p></div>
+      <%= render "storage_planner" %>
       <div class="catalog-sections"><% @catalog.categories.each do |category| %><article class="catalog-category"><div><small><%= category.fetch("language", "en").upcase %></small><h2><%= category.fetch("name") %></h2><p><%= category.fetch("description") %></p></div><div class="tier-options"><% category.fetch("tiers").each do |tier| %><% size = tier.fetch("resources", []).sum { |r| r.fetch("size_mb", 0) } %><label data-action="pointerdown->wizard#rememberRadio"><%= radio_button_tag "tiers[#{category.fetch("slug")} ]", "tier:#{category.fetch("slug")}:#{tier.fetch("slug")}", false, data: { size: size, action: "keydown.space->wizard#rememberRadio click->wizard#toggleRadio" } %><span><b><%= tier.fetch("name") %></b><small><%= number_to_human_size(size.megabytes) %></small></span></label><% end %></div></article><% end %>
         <article class="catalog-category wikipedia"><div><small>REFERENCE</small><h2>Wikipedia</h2><p>Choose an English-language offline edition.</p></div><div class="tier-options"><% @catalog.wikipedia.each do |option| %><label data-action="pointerdown->wizard#rememberRadio"><%= radio_button_tag "wikipedia", "wikipedia:#{option.fetch("id")}", option.fetch("id") == "none", data: { size: option.fetch("size_mb"), action: "keydown.space->wizard#rememberRadio click->wizard#toggleRadio" } %><span><b><%= option.fetch("name") %></b><small><%= number_to_human_size(option.fetch("size_mb").megabytes) %></small></span></label><% end %></div></article>
       </div>
@@ -33,7 +35,7 @@
 
     <section class="wizard-step" data-wizard-target="step">
       <div class="wizard-intro"><p class="section-index">STEP 04 // OFFLINE AI</p><h1>Select local intelligence.</h1><p>Designed for the 1 GB Raspberry Pi 3 B. The cited source assistant is fastest and most reliable; the tiny model is optional and never replaces source citations.</p></div>
-      <div class="ai-profile selectable"><% @ai_profiles.each do |id, profile| %><label data-action="pointerdown->wizard#rememberRadio"><%= radio_button_tag :ai_profile, id, id == "source-assistant", data: { size: profile.fetch(:size_mb), action: "keydown.space->wizard#rememberRadio click->wizard#toggleRadio" } %><span class="ai-select"><i></i><small><%= id == "disabled" ? "SEARCH ONLY" : (id == "source-assistant" ? "PI 3 RECOMMENDED" : "TINY OFFLINE MODEL") %></small><h2><%= profile.fetch(:name) %></h2><p><%= profile.fetch(:description) %></p><dl><div><dt>MODEL</dt><dd><%= profile.fetch(:model) || "NONE" %></dd></div><div><dt>DOWNLOAD</dt><dd><%= number_to_human_size(profile.fetch(:size_mb).megabytes) %></dd></div><div><dt>MIN. RAM</dt><dd><%= profile.fetch(:ram) %></dd></div></dl></span></label><% end %></div>
+      <div class="ai-profile selectable"><% @ai_profiles.each do |id, profile| %><label data-action="pointerdown->wizard#rememberRadio"><%= radio_button_tag :ai_profile, id, id == "source-assistant", data: { size: profile.fetch(:size_mb), action: "keydown.space->wizard#rememberRadio click->wizard#toggleRadio" } %><span class="ai-select"><i></i><small><%= id == "disabled" ? "SEARCH ONLY" : (id == "source-assistant" ? "PI 3 RECOMMENDED" : (id == "smollm2-135m" ? "LOWEST MEMORY" : "EXPERIMENTAL")) %></small><h2><%= profile.fetch(:name) %></h2><p><%= profile.fetch(:description) %></p><dl><div><dt>MODEL</dt><dd><%= profile.fetch(:model) || "NONE" %></dd></div><div><dt>SETUP DOWNLOAD</dt><dd><%= number_to_human_size(profile.fetch(:size_mb).megabytes) %></dd></div><div><dt>MIN. RAM</dt><dd><%= profile.fetch(:ram) %></dd></div></dl></span></label><% end %></div>
     </section>
 
     <section class="wizard-step review-step" data-wizard-target="step">

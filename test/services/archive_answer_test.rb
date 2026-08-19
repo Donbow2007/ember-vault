@@ -45,4 +45,28 @@ class ArchiveAnswerTest < ActiveSupport::TestCase
     assert_match(/Mix the egg/, answer.sources.first.quote)
     assert_no_match(/Making snow/, answer.sources.first.quote)
   end
+
+  test "prefers a self-contained water treatment section over classroom fragments" do
+    guide = Document.create!(title: "Emergency Water Guide", original_filename: "water.pdf", content_type: "application/pdf",
+      stored_path: "storage/archive_files/water.pdf", byte_size: 100, status: "ready", passage_count: 7)
+    guide.passages.create!(position: 0, heading: "files/Water.pdf",
+      body: "Ask one child how water can be made safe to drink. What did we learn in this school lesson?")
+    guide.passages.create!(position: 10, heading: "files/Water.pdf", body: "Purifying by boiling")
+    guide.passages.create!(position: 11, heading: "files/Water.pdf",
+      body: "If your tap water is unsafe, boiling is the best method to kill disease-causing organisms.")
+    guide.passages.create!(position: 12, heading: "files/Water.pdf",
+      body: "Cloudy water should be filtered before boiling.")
+    guide.passages.create!(position: 13, heading: "files/Water.pdf",
+      body: "Bring the water to a rolling boil for at least one full minute.")
+    guide.passages.create!(position: 14, heading: "files/Water.pdf", body: "Let the water cool before drinking.")
+    guide.passages.create!(position: 15, heading: "files/Water.pdf",
+      body: "Caution: Chemical pollutants will not be removed by boiling.")
+    Passage.rebuild_search_index
+
+    answer = ArchiveAnswer.new("How can I make water safe to drink?").call
+
+    assert_equal 10, answer.sources.first.passage.position
+    assert_match(/rolling boil/, answer.sources.first.quote)
+    assert_no_match(/Ask one child/, answer.sources.first.quote)
+  end
 end

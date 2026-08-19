@@ -1,0 +1,43 @@
+<section id="assistant-response-<%= response.id %>" class="assistant-conversation assistant-answer" aria-live="polite"
+  <% if response.pending? %>data-controller="assistant-response" data-assistant-response-url-value="<%= assistant_response_path(response) %>"<% end %>>
+  <div class="assistant-response-heading">
+    <div>
+      <p class="section-index">RESPONSE // <%= response.complete? ? response.response_mode.to_s.upcase.tr("-", " ") : response.status.upcase %></p>
+      <h2><%= response.pending? ? (response.answer.present? ? "Field guidance." : (response.cancel_requested? ? "Stopping response…" : "Working from local sources…")) : ((response.failed? || response.cancelled?) ? "Response interrupted." : (response.sources.any? ? "Field guidance." : "The archive comes up short.")) %></h2>
+    </div>
+    <b><%= response.pending? ? (response.answer.present? ? "REFINING" : "RETRIEVING") : pluralize(response.sources.size, "SOURCE") %></b>
+  </div>
+
+  <% if response.pending? %>
+    <% if response.answer.present? %>
+      <div class="assistant-response-copy"><div class="assistant-generated-answer"><%= simple_format(response.answer) %></div><p class="assistant-caution">This cited answer is ready now. A local model is attempting a short refinement; you do not need to wait for it.</p></div>
+    <% end %>
+    <div class="assistant-pending"><i></i><p><%= response.cancel_requested? ? "Stopping the local model refinement. The source answer above remains available." : (response.answer.present? ? "Optional local refinement is running with a strict four-second limit." : "Searching the local index for relevant passages.") %></p><% unless response.cancel_requested? %><%= button_to "STOP REFINEMENT", cancel_assistant_response_path(response), class: "assistant-stop-button" %><% end %></div>
+  <% elsif response.cancelled? %>
+    <div class="assistant-no-answer"><p>This response was stopped. The local model process has been terminated; your documents and search index are unaffected.</p><div><%= link_to "ASK AGAIN", assistant_path(question: response.question), class: "button button-light" %><%= link_to "SEARCH DOCUMENTS", root_path, class: "button button-ghost" %></div></div>
+  <% elsif response.failed? %>
+    <div class="assistant-no-answer"><p>The local assistant could not finish this response. Your documents and search index are unaffected. Try the question again or use document search.</p><div><%= link_to "TRY AGAIN", assistant_path(question: response.question), class: "button button-light" %><%= link_to "SEARCH DOCUMENTS", root_path, class: "button button-ghost" %></div></div>
+  <% else %>
+    <div class="assistant-response-copy">
+      <div class="assistant-generated-answer"><%= simple_format(response.answer) %></div>
+      <% if response.sources.any? %><p class="assistant-caution">Built only from the indexed passages listed below. For critical decisions, open the original source and verify the full context.</p><% end %>
+    </div>
+  <% end %>
+
+  <% if response.sources.any? && !response.failed? && !response.cancelled? %>
+    <footer class="assistant-source-links">
+      <div class="search-group-heading"><span>SOURCES // OPEN ORIGINAL PASSAGES</span><b><%= pluralize(response.sources.size, "LINK") %></b></div>
+      <div class="result-list">
+        <% response.sources.each_with_index do |passage, index| %>
+          <article>
+            <div><span>SOURCE <%= format("%02d", index + 1) %> · <%= passage.document.original_filename %></span><b>PASSAGE <%= passage.position + 1 %></b></div>
+            <h3><%= link_to passage.heading, document_path(passage.document, passage_id: passage.id, anchor: "passage-#{passage.id}") %></h3>
+            <p><%= passage.document.title %> · OPEN THE EXACT SOURCE PASSAGE →</p>
+          </article>
+        <% end %>
+      </div>
+    </footer>
+  <% elsif response.complete? %>
+    <div class="assistant-no-answer"><p>Try fewer words, ask about one subject at a time, or check that the relevant download finished indexing.</p><div><%= link_to "SEARCH DOCUMENTS", root_path, class: "button button-light" %><%= link_to "CHECK DOWNLOADS", downloads_path, class: "button button-ghost" %></div></div>
+  <% end %>
+</section>
