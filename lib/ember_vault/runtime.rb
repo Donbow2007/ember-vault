@@ -23,6 +23,7 @@ module EmberVault
       ensure_secret
       run!(%w[bundle install]) unless system("bundle", "check", chdir: APP_ROOT)
       run!(%w[npm ci --prefix vendor/map_indexer])
+      ensure_local_ai_runtime unless ENV["EMBER_VAULT_SKIP_LOCAL_AI_RUNTIME"] == "1"
       run!(%w[bin/rails db:prepare], env: production_env)
       run!(%w[bin/rails assets:precompile], env: production_env.merge("SECRET_KEY_BASE_DUMMY" => "1"))
       say "Ember Vault setup complete."
@@ -153,7 +154,32 @@ module EmberVault
     end
 
     def ensure_directories
-      %w[archive_files content backups].each { |directory| FileUtils.mkdir_p(File.join(STORAGE_ROOT, directory)) }
+      %w[archive_files content models backups].each { |directory| FileUtils.mkdir_p(File.join(STORAGE_ROOT, directory)) }
+    end
+
+    def ensure_local_ai_runtime
+      return if executable_on_path?(Gem.win_platform? ? "llama-completion.exe" : "llama-completion")
+      return if File.executable?(File.join(APP_ROOT, "vendor", "llama.cpp", "build", "bin", "llama-completion"))
+      return say("NOTE: llama.cpp must be installed separately on Windows.") if Gem.win_platform?
+      return say("NOTE: install llama.cpp with Homebrew to enable model answers.") if RUBY_PLATFORM.include?("darwin")
+
+      source = File.join(APP_ROOT, "vendor", "llama.cpp")
+      if File.directory?(File.join(source, ".git"))
+        run!([ "git", "-C", source, "pull", "--ff-only" ])
+      else
+        run!([ "git", "clone", "--depth", "1", "https://github.com/ggml-org/llama.cpp.git", source ])
+      end
+      run!([ "cmake", "-S", source, "-B", File.join(source, "build"), "-DGGML_NATIVE=ON", "-DGGML_BUILD_TESTS=OFF", "-DGGML_BUILD_EXAMPLES=OFF", "-DLLAMA_BUILD_EXAMPLES=OFF", "-DLLAMA_BUILD_TOOLS=ON" ])
+      run!([ "cmake", "--build", File.join(source, "build"), "--target", "llama-completion", "--parallel", "1" ])
+    rescue StandardError => error
+      say "NOTE: local AI runtime setup failed (#{error.message}); cited source mode remains available."
+    end
+
+    def executable_on_path?(name)
+      ENV.fetch("PATH", "").split(File::PATH_SEPARATOR).any? do |directory|
+        candidate = File.join(directory, name)
+        File.file?(candidate) && File.executable?(candidate)
+      end
     end
 
     def ensure_secret

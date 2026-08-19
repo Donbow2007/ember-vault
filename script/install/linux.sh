@@ -13,7 +13,7 @@ if ! command -v apt-get >/dev/null 2>&1; then
 fi
 
 sudo apt-get update
-sudo apt-get install --no-install-recommends -y +  build-essential git libsqlite3-dev libyaml-dev nodejs npm pkg-config poppler-utils ruby-dev ruby-full sqlite3
+sudo apt-get install --no-install-recommends -y build-essential cmake git libsqlite3-dev libyaml-dev nodejs npm pkg-config poppler-utils ruby-dev ruby-full sqlite3
 if apt-cache show zim-tools >/dev/null 2>&1; then
   sudo apt-get install --no-install-recommends -y zim-tools
 else

@@ -16,7 +16,7 @@ if ! command -v brew >/dev/null 2>&1; then
   fi
 fi
 
-brew install git node poppler ruby sqlite
+brew install git llama.cpp node poppler ruby sqlite
 brew install libzim || true
 
 mkdir -p "$INSTALL_ROOT" "$DATA_ROOT" "$(dirname "$PLIST_PATH")"

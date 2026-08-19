@@ -12,6 +12,7 @@ class SetupControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[value^='map:']", minimum: 1
     assert_select "input[name='ai_profile'][value='source-assistant'][checked]"
     assert_select "input[name='ai_profile'][value='smollm2-135m']"
+    assert_select "input[name='ai_profile'][value='smollm2-360m']"
     assert_select "input[name='ai_profile'][value='llama3.2-1b']", count: 0
     assert_select "input[name='theme'][value='dark'][checked]"
     assert_select "input[name='theme'][value='light']"
@@ -40,5 +41,19 @@ class SetupControllerTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_select "body[data-theme='light']"
     assert_select ".completion-page", text: /Theme: Light/
+  end
+
+  test "queues the selected tiny model during setup" do
+    assert_enqueued_jobs 2, only: ContentDownloadJob do
+      post setup_url, params: {
+        capabilities: [ "information" ], wikipedia: "wikipedia:top-mini", packages: [], tiers: {},
+        ai_profile: "smollm2-135m", theme: "dark"
+      }
+    end
+
+    model = ContentDownload.find_by!(resource_id: "smollm2-135m")
+    assert_equal "model", model.kind
+    assert_equal "huggingface.co", URI(model.source_url).host
+    assert_equal Rails.root.join("storage/models/smollm2-135m.gguf"), model.inferred_destination_path
   end
 end

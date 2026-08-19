@@ -17,6 +17,7 @@ Ensure-WingetPackage "Git.Git"
 Ensure-WingetPackage "RubyInstallerTeam.RubyWithDevKit.3.3"
 Ensure-WingetPackage "OpenJS.NodeJS.LTS"
 Ensure-WingetPackage "oschwartz10612.Poppler"
+winget install llama.cpp --silent --accept-package-agreements --accept-source-agreements
 
 $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
 New-Item -ItemType Directory -Force -Path $InstallRoot, $DataRoot | Out-Null
