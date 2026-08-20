@@ -1,8 +1,18 @@
 <% content_for :title, "Ask the Archive — Ember Vault" %>
 <main class="assistant-results-page">
+  <% if notice %><p class="flash notice"><%= notice %></p><% end %>
+  <% if alert %><p class="flash alert"><%= alert %></p><% end %>
   <header class="assistant-search-header">
     <div><p class="section-index">FIELD INTEL // OFFLINE SOURCE ASSISTANT</p><h1>Ask the archive.</h1><p>Ask naturally. Ember retrieves local evidence first, then answers without contacting the internet.</p></div>
-    <span><b></b> LOCAL · READY</span>
+    <aside class="assistant-ai-panel">
+      <div><span><b></b> LOCAL · READY</span><small><%= pluralize(@ai_profile_options.size - 1, "downloaded model") %></small></div>
+      <%= form_with url: ai_profile_setting_path, method: :patch, data: { controller: "auto-submit", action: "change->auto-submit#submit" } do |form| %>
+        <%= form.label :ai_profile, "ACTIVE OFFLINE AI" %>
+        <%= form.select :ai_profile, options_for_select(@ai_profile_options.map { |id, name| [name, id] }, @selected_ai_profile), {}, aria: { label: "Active offline AI" } %>
+        <noscript><%= form.submit "SAVE" %></noscript>
+      <% end %>
+      <p>Saves automatically when changed.</p>
+    </aside>
   </header>
 
   <%= form_with url: assistant_path, method: :post, class: "assistant-search-input" do |form| %>

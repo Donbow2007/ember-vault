@@ -1,13 +1,16 @@
 require "fileutils"
+require "json"
 require "net/http"
 require "open3"
 require "securerandom"
+require "socket"
 require "time"
+require_relative "paths"
 
 module EmberVault
   class Runtime
     APP_ROOT = File.expand_path("../..", __dir__)
-    STORAGE_ROOT = ENV.fetch("EMBER_VAULT_DATA_DIR", File.join(APP_ROOT, "storage"))
+    STORAGE_ROOT = Paths.data_root.to_s
     PID_PATH = File.join(STORAGE_ROOT, "ember-vault.pid")
     LOG_PATH = File.join(STORAGE_ROOT, "ember-vault.log")
     SECRET_PATH = File.join(STORAGE_ROOT, ".secret_key_base")
@@ -15,7 +18,6 @@ module EmberVault
 
     def initialize(output: $stdout)
       @output = output
-      FileUtils.mkdir_p(STORAGE_ROOT)
     end
 
     def setup
@@ -30,10 +32,21 @@ module EmberVault
     end
 
     def run_foreground
+      pid = nil
       ensure_directories
       ensure_secret
-      Dir.chdir(APP_ROOT) do
-        exec(production_env, "bin/rails", "server", "-e", "production", "-b", bind_address, "-p", port)
+      raise "Ember Vault is already running as PID #{read_pid}." if running?
+
+      say "Starting Ember Vault at http://#{display_host}:#{port}. Press Ctrl+C for a safe shutdown."
+      pid = spawn_server
+      write_pid(pid)
+      wait_for_foreground_server(pid)
+    ensure
+      if pid
+        FileUtils.rm_f(PID_PATH) if read_pid == pid
+        flushed = checkpoint_and_flush
+        say(flushed ? "Ember Vault stopped. It is now safe to eject portable storage." :
+          "Ember Vault stopped. Use the operating system's eject command before removing storage.")
       end
     end
 
@@ -43,11 +56,13 @@ module EmberVault
       ensure_directories
       ensure_secret
       log = File.open(LOG_PATH, "a")
-      options = Gem.win_platform? ? { new_pgroup: true } : { pgroup: true }
-      pid = Process.spawn(production_env, "bin/rails", "server", "-e", "production", "-b", bind_address, "-p", port,
-        chdir: APP_ROOT, out: log, err: log, **options)
+      begin
+        pid = spawn_server(out: log, err: log)
+      ensure
+        log.close
+      end
       Process.detach(pid)
-      File.write(PID_PATH, pid)
+      write_pid(pid)
       say "Starting Ember Vault as PID #{pid}..."
       raise "Ember Vault did not become healthy. Check #{LOG_PATH}." unless wait_for_health
 
@@ -55,17 +70,24 @@ module EmberVault
     end
 
     def stop
-      return say("Ember Vault is not running.") unless running?
+      unless running?
+        FileUtils.rm_f(PID_PATH)
+        flushed = checkpoint_and_flush
+        return say(flushed ? "Ember Vault is stopped. It is safe to eject portable storage." :
+          "Ember Vault is stopped. Use the operating system's eject command before removing storage.")
+      end
 
       pid = read_pid
-      Process.kill(Gem.win_platform? ? "KILL" : "TERM", pid)
-      50.times do
+      signal_process_group("TERM", pid)
+      150.times do
         break unless process_alive?(pid)
         sleep 0.1
       end
-      Process.kill("KILL", pid) if process_alive?(pid)
+      signal_process_group("KILL", pid) if process_alive?(pid)
       FileUtils.rm_f(PID_PATH)
-      say "Ember Vault stopped."
+      flushed = checkpoint_and_flush
+      say(flushed ? "Ember Vault stopped. It is now safe to eject portable storage." :
+        "Ember Vault stopped. Use the operating system's eject command before removing storage.")
     rescue Errno::ESRCH
       FileUtils.rm_f(PID_PATH)
       say "Ember Vault was already stopped."
@@ -82,6 +104,7 @@ module EmberVault
     end
 
     def update
+      ensure_directories
       File.open(UPDATE_LOCK_PATH, File::RDWR | File::CREAT, 0o600) do |lock|
         raise "Another update is already running." unless lock.flock(File::LOCK_EX | File::LOCK_NB)
 
@@ -135,7 +158,8 @@ module EmberVault
     end
 
     def backup_databases
-      files = Dir.glob(File.join(STORAGE_ROOT, "*.sqlite3*")).select { |path| File.file?(path) }
+      checkpoint_databases!
+      files = database_files
       return nil if files.empty?
 
       destination = File.join(STORAGE_ROOT, "backups", Time.now.utc.strftime("%Y%m%dT%H%M%SZ"))
@@ -154,7 +178,7 @@ module EmberVault
     end
 
     def ensure_directories
-      %w[archive_files content models backups].each { |directory| FileUtils.mkdir_p(File.join(STORAGE_ROOT, directory)) }
+      Paths.prepare!
     end
 
     def ensure_local_ai_runtime
@@ -189,12 +213,67 @@ module EmberVault
       File.chmod(0o600, SECRET_PATH) unless Gem.win_platform?
     end
 
+    def spawn_server(out: nil, err: nil)
+      options = Gem.win_platform? ? { new_pgroup: true } : { pgroup: true }
+      options[:out] = out if out
+      options[:err] = err if err
+      Process.spawn(production_env, "bin/rails", "server", "-e", "production", "-b", bind_address, "-p", port,
+        chdir: APP_ROOT, **options)
+    end
+
+    def wait_for_foreground_server(pid)
+      previous_handlers = {}
+      %w[INT TERM].each do |signal|
+        previous_handlers[signal] = Signal.trap(signal) { signal_process_group("TERM", pid) }
+      end
+      Process.wait(pid)
+    rescue Errno::ECHILD
+      nil
+    ensure
+      previous_handlers&.each { |signal, handler| Signal.trap(signal, handler) }
+    end
+
+    def signal_process_group(signal, pid)
+      Process.kill(signal, Gem.win_platform? ? pid : -pid)
+    rescue Errno::ESRCH, Errno::EPERM
+      nil
+    end
+
+    def database_files
+      Dir.glob(File.join(STORAGE_ROOT, "*.sqlite3")).select { |path| File.file?(path) }
+    end
+
+    def checkpoint_databases!
+      require "sqlite3"
+      database_files.each do |path|
+        database = nil
+        database = SQLite3::Database.new(path)
+        database.busy_timeout(5_000)
+        result = database.execute("PRAGMA wal_checkpoint(TRUNCATE)").first
+        raise "SQLite checkpoint remained busy for #{File.basename(path)}" if result && result.first.to_i.positive?
+      ensure
+        database&.close
+      end
+    end
+
+    def checkpoint_and_flush
+      checkpoint_databases!
+      database_files.each { |path| File.open(path, "r+b", &:fsync) }
+      system("sync", out: File::NULL, err: File::NULL) unless Gem.win_platform?
+      true
+    rescue LoadError, StandardError => error
+      say "WARNING: storage flush could not be confirmed (#{error.message}). Do not unplug the drive until the operating system says it is safe."
+      false
+    end
+
     def production_env
       {
         "RAILS_ENV" => "production",
         "RACK_ENV" => "production",
         "SECRET_KEY_BASE" => File.read(SECRET_PATH).strip,
         "EMBER_VAULT_DATA_DIR" => STORAGE_ROOT,
+        "EMBER_VAULT_DATA_PATH" => STORAGE_ROOT,
+        "EMBER_VAULT_PORTABLE" => ENV.fetch("EMBER_VAULT_PORTABLE", "0"),
         "SOLID_QUEUE_IN_PUMA" => "1",
         "RAILS_MAX_THREADS" => ENV.fetch("RAILS_MAX_THREADS", "2"),
         "JOB_CONCURRENCY" => ENV.fetch("JOB_CONCURRENCY", "1"),
@@ -220,9 +299,27 @@ module EmberVault
       pid && process_alive?(pid)
     end
 
+    def write_pid(pid)
+      temporary_path = "#{PID_PATH}.#{Process.pid}.tmp"
+      payload = JSON.generate(pid:, host: Socket.gethostname, app_root: APP_ROOT)
+      File.open(temporary_path, "w", 0o600) do |file|
+        file.write(payload)
+        file.flush
+        file.fsync
+      end
+      File.rename(temporary_path, PID_PATH)
+    ensure
+      FileUtils.rm_f(temporary_path) if temporary_path && File.file?(temporary_path)
+    end
+
     def read_pid
-      Integer(File.read(PID_PATH).strip)
-    rescue Errno::ENOENT, ArgumentError
+      payload = File.read(PID_PATH).strip
+      record = JSON.parse(payload)
+      return Integer(record) unless record.is_a?(Hash)
+      return nil unless record["host"] == Socket.gethostname && record["app_root"] == APP_ROOT
+
+      Integer(record.fetch("pid"))
+    rescue Errno::ENOENT, ArgumentError, JSON::ParserError, KeyError
       nil
     end
 

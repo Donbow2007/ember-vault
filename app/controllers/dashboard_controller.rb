@@ -1,5 +1,3 @@
-require "open3"
-
 class DashboardController < ApplicationController
   def index
     @query = params[:q].to_s.strip
@@ -26,15 +24,7 @@ class DashboardController < ApplicationController
   private
 
   def disk_usage
-    output, status = Open3.capture2("df", "-Pk", Rails.root.to_s)
-    fields = output.lines.last.to_s.split
-    return { used: 0, available: 0, percent: 0 } unless status.success? && fields.length >= 6
-
-    used = fields[2].to_i.kilobytes
-    available = fields[3].to_i.kilobytes
-    total_available = used + available
-    percent = total_available.positive? ? (used.to_f / total_available * 100).round : 0
-    { used:, available:, percent: }
+    StorageMetrics.new.call
   end
 
   def human_size(bytes)

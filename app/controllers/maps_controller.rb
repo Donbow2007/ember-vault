@@ -10,15 +10,17 @@ class MapsController < ApplicationController
 
   def archive
     download = completed_map
-    path = Rails.root.join(download.destination_path).cleanpath
-    content_root = Rails.root.join("storage", "content", "map").cleanpath
-    return head :not_found unless path.to_s.start_with?("#{content_root}/") && File.file?(path)
+    path = EmberVault::Paths.resolve(download.destination_path)
+    content_root = EmberVault::Paths.content_for("map")
+    return head :not_found unless EmberVault::Paths.within?(path, content_root) && File.file?(path)
 
     response.headers["Accept-Ranges"] = "bytes"
     response.headers["Cache-Control"] = "private, max-age=3600"
     return serve_range(path, request.headers["Range"]) if request.headers["Range"].present?
 
     send_file path, type: "application/octet-stream", disposition: "inline"
+  rescue ArgumentError
+    head :not_found
   end
 
   def search

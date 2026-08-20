@@ -20,6 +20,11 @@ class AssistantControllerTest < ActionDispatch::IntegrationTest
     assert_select ".assistant-answer", text: /Boil clear water/
     assert_select "a[href='#{document_path(document, passage_id: passage.id, anchor: "passage-#{passage.id}")}']"
     assert_select ".assistant-answer", text: /SOURCE ASSISTANT/
+    assert_select "form[action='#{ai_profile_setting_path}'][data-controller='auto-submit'][data-action='change->auto-submit#submit']" do
+      assert_select "select[name='ai_profile'] option[value='source-assistant']"
+      assert_select "noscript input[type='submit'][value='SAVE']"
+    end
+    assert_select ".assistant-ai-panel", text: /Saves automatically when changed/
   end
 
   test "reports when no indexed source supports the question" do

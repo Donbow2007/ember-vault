@@ -8,6 +8,9 @@ class AssistantController < ApplicationController
       return answer_and_redirect(@question) if @question.present?
     end
     @configuration = SetupConfiguration.order(created_at: :desc).first
+    @ai_runtime = LocalAiRuntime.new
+    @ai_profile_options = LocalAiRuntime.selectable_profiles
+    @selected_ai_profile = @ai_profile_options.key?(@ai_runtime.profile) ? @ai_runtime.profile : "source-assistant"
   end
 
   def create
@@ -42,14 +45,14 @@ class AssistantController < ApplicationController
       AssistantPrompt::INSUFFICIENT_MESSAGE
     end
     response = AssistantResponse.create!(question:, answer:,
-      source_passage_ids: retrieval.sources.map { |source| source.passage.id },
+      source_passage_ids: SourceAnswerFormatter.cited_passage_ids(answer, retrieval.sources),
       response_mode: "source-assistant", status: "complete")
     enqueue_model_enhancement(response) if retrieval.found?
     redirect_to assistant_path(response_id: response.id)
   end
 
   def enqueue_model_enhancement(response)
-    return unless LocalAiRuntime.new.available? && AssistantResponseJob.model_eligible?(response.question)
+    return unless LocalAiRuntime.new.available? && AssistantResponseJob.model_eligible?(response.question, answer: response.answer)
 
     response.update!(status: "queued")
     job = AssistantResponseJob.perform_later(response)

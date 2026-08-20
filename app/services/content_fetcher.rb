@@ -34,7 +34,7 @@ class ContentFetcher
     @temporary_path = destination.sub_ext("#{destination.extname}.part")
     fetch(URI.parse(@download.source_url), @temporary_path, initial: true)
     handle_control_request!
-    @download.update!(status: "complete", destination_path: destination.relative_path_from(Rails.root).to_s)
+    @download.update!(status: "complete", destination_path: EmberVault::Paths.relative(destination))
     @download.enqueue_indexing!
     @download.enqueue_map_indexing!
   rescue TransferCancelled => error

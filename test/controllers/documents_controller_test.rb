@@ -30,6 +30,11 @@ class DocumentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "form[action='#{index_content_download_path(download)}']"
     assert_select "form[action='#{reindex_all_downloads_path}']"
     assert_select "form[action='#{reindex_map_path(map)}']"
+    assert_select "form.archive-search-input[action='#{search_path}']" do
+      assert_select ".search-icon"
+      assert_select "input[type='search'][name='q'][placeholder='SEARCH THE ENTIRE ARCHIVE...']"
+      assert_select "input[type='submit'][value='SEARCH']"
+    end
     assert_select ".inventory-download .index-state", text: "1 MAP NAME"
     assert_select "p.section-index", text: "LOCAL // UNIFIED INVENTORY"
   end
@@ -44,6 +49,7 @@ class DocumentsControllerTest < ActionDispatch::IntegrationTest
     document = Document.last
     assert_redirected_to document_url(document)
     assert_equal "ready", document.status
+    assert_match %r{\Aarchive_files/}, document.stored_path
     assert document.passage_count.positive?
 
     get search_url, params: { q: "boil drinking water" }

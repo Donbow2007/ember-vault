@@ -1,9 +1,15 @@
 class AssistantResponseJob < ApplicationJob
   queue_as :ai
 
-  def self.model_eligible?(question)
+  def self.model_eligible?(question, answer: nil)
     words = question.downcase.scan(/[[:alpha:]]+/)
-    (words & %w[how recipe make prepare cook bake repair build treat steps instructions medical medicine dose dosage wound burn fire electrical chemical]).empty?
+    hazardous = (words & %w[medical medicine dose dosage wound burn electrical chemical poison poisoning]).any?
+    emergency_water = words.include?("water") && (words & %w[safe drink drinking purify disinfect treat]).any?
+    food_preservation = (words & %w[botulism canning preserve preserving preservation]).any?
+    food_storage = (words & %w[store storing storage]).any? &&
+      (words & %w[beans egg eggs food grain grains meat oil potato potatoes vegetable vegetables]).any?
+    structured_answer = answer.to_s.match?(/What you’ll need:|Here’s how to make it:|(?:\A|\n)\d+\.\s/)
+    !hazardous && !emergency_water && !food_preservation && !food_storage && !structured_answer
   end
 
   def perform(response)
@@ -27,6 +33,7 @@ class AssistantResponseJob < ApplicationJob
     return mark_cancelled(response) if response.reload.cancel_requested?
 
     response.update!(answer:, response_mode: mode,
+      source_passage_ids: SourceAnswerFormatter.cited_passage_ids(answer, retrieval.sources),
       status: "complete", error_message: runtime_error)
   rescue LocalAiRuntime::CancelledError
     mark_cancelled(response)

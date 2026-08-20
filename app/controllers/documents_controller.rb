@@ -69,13 +69,13 @@ class DocumentsController < ApplicationController
     return redirect_to(documents_path, alert: "Unsupported format.") unless ALLOWED_EXTENSIONS.include?(extension)
     return redirect_to(documents_path, alert: "Files must be 20 MB or smaller.") if upload.size > MAX_FILE_SIZE
 
-    archive_dir = Rails.root.join("storage", "archive_files")
+    archive_dir = EmberVault::Paths.archive_files
     FileUtils.mkdir_p(archive_dir)
     stored_path = archive_dir.join("#{SecureRandom.uuid}#{extension}")
     IO.copy_stream(upload.tempfile, stored_path)
     document = Document.create!(title: params[:title].presence || File.basename(upload.original_filename, extension).humanize,
       original_filename: File.basename(upload.original_filename), content_type: upload.content_type.presence || "application/octet-stream",
-      stored_path: stored_path.relative_path_from(Rails.root).to_s, byte_size: upload.size, status: "queued")
+      stored_path: EmberVault::Paths.relative(stored_path), byte_size: upload.size, status: "queued")
     IndexDocumentJob.perform_now(document)
     redirect_to document_path(document), notice: document.ready? ? "Document indexed successfully." : "Document could not be indexed."
   rescue StandardError => error
@@ -106,7 +106,7 @@ class DocumentsController < ApplicationController
   def zim_reader(document)
     raise "Original source is unavailable" unless document.content_type == "application/x-openzim"
 
-    ZimReader.new(Rails.root.join(document.stored_path))
+    ZimReader.new(EmberVault::Paths.resolve(document.stored_path))
   end
 
   def original_pdf(document, passage)
@@ -115,7 +115,7 @@ class DocumentsController < ApplicationController
 
       zim_reader(document).content_by_index(passage.source_entry_index)
     elsif File.extname(document.original_filename).downcase == ".pdf"
-      File.binread(Rails.root.join(document.stored_path))
+      File.binread(EmberVault::Paths.resolve(document.stored_path))
     else
       raise "Original PDF source is unavailable"
     end

@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
+DATA_ROOT="${EMBER_VAULT_DATA_PATH:-${EMBER_VAULT_DATA_DIR:-$APP_ROOT/data}}"
+COMMAND="${1:-run}"
+if [ "$#" -gt 0 ]; then shift; fi
+
+export EMBER_VAULT_DATA_PATH="$DATA_ROOT"
+export EMBER_VAULT_DATA_DIR="$DATA_ROOT"
+export EMBER_VAULT_PORTABLE=1
+export BUNDLE_PATH="${BUNDLE_PATH:-$APP_ROOT/vendor/bundle}"
+export BIND_ADDRESS="${BIND_ADDRESS:-127.0.0.1}"
+export RAILS_MAX_THREADS="${RAILS_MAX_THREADS:-2}"
+export JOB_CONCURRENCY="${JOB_CONCURRENCY:-1}"
+export EMBER_VAULT_AI_THREADS="${EMBER_VAULT_AI_THREADS:-2}"
+
+cd "$APP_ROOT"
+
+if ! command -v ruby >/dev/null 2>&1 || ! command -v bundle >/dev/null 2>&1; then
+  echo "ERROR: Ruby 3.3 and Bundler must be installed on this computer." >&2
+  exit 1
+fi
+
+if [ "$COMMAND" = "setup" ]; then
+  if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+    echo "ERROR: Node.js and npm are required during Setup for offline map indexing." >&2
+    exit 1
+  fi
+  bundle config set --local path "$BUNDLE_PATH"
+  exec ruby bin/ember-vault setup "$@"
+fi
+
+if ! bundle check >/dev/null 2>&1; then
+  echo "ERROR: This portable drive has not been prepared for this operating system and CPU." >&2
+  echo "Run: ./start-ember-vault setup" >&2
+  exit 1
+fi
+
+if ! command -v zimdump >/dev/null 2>&1; then
+  echo "NOTE: zimdump is not installed; existing content works, but new ZIM archives cannot be indexed." >&2
+fi
+if ! command -v pdftoppm >/dev/null 2>&1; then
+  echo "NOTE: pdftoppm is not installed; PDF text works, but page previews are unavailable." >&2
+fi
+
+exec bundle exec ruby bin/ember-vault "$COMMAND" "$@"

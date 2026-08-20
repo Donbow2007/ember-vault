@@ -29,9 +29,6 @@ fi
 
 if [ ! -L "$APP_ROOT/storage" ]; then
   find "$APP_ROOT/storage" -mindepth 1 -maxdepth 1 ! -name .keep -exec mv -n {} "$DATA_ROOT/" \;
-  rm -f "$APP_ROOT/storage/.keep"
-  rmdir "$APP_ROOT/storage"
-  ln -s "$DATA_ROOT" "$APP_ROOT/storage"
 fi
 
 export PATH="$(brew --prefix ruby)/bin:$PATH"

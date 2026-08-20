@@ -15,6 +15,10 @@ class ContentCatalog
     Array(keys).flat_map { |key| resolve_key(key) }.compact.uniq { |resource| resource.fetch("id") }
   end
 
+  def installation_size_mb(keys)
+    resolve(keys).sum { |resource| resource.fetch("size_mb", 0).to_i }
+  end
+
   def searchable_resources
     resources = categories.flat_map { |category| category.fetch("tiers").flat_map { |tier| resolve_tier(category, tier) } }
     resources += maps.flat_map { |collection| collection.fetch("resources", []).map { |item| item.merge("kind" => "map") } }

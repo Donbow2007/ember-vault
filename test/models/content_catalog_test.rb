@@ -19,4 +19,12 @@ class ContentCatalogTest < ActiveSupport::TestCase
     resources = catalog.resolve([ "wikipedia:top-mini", "wikipedia:top-mini" ])
     assert_equal resources.map { |item| item.fetch("id") }.uniq, resources.map { |item| item.fetch("id") }
   end
+
+  test "reports cumulative installation sizes for inherited tiers" do
+    catalog = ContentCatalog.new
+
+    assert_equal 2_459, catalog.installation_size_mb("tier:survival:survival-essential")
+    assert_equal 10_235, catalog.installation_size_mb("tier:survival:survival-standard")
+    assert_equal 14_992, catalog.installation_size_mb("tier:survival:survival-comprehensive")
+  end
 end
