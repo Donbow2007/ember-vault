@@ -69,4 +69,41 @@ class ArchiveAnswerTest < ActiveSupport::TestCase
     assert_match(/rolling boil/, answer.sources.first.quote)
     assert_no_match(/Ask one child/, answer.sources.first.quote)
   end
+
+  test "honors a request for a non-boiling water treatment" do
+    guide = Document.create!(title: "Water Treatment Library", original_filename: "water.zim",
+      content_type: "application/x-openzim", stored_path: "storage/content/zim/water.zim",
+      byte_size: 100, status: "ready", passage_count: 2)
+    bleach = guide.passages.create!(position: 20, heading: "Emergency chemical treatment",
+      body: "Plain unscented household bleach with 6% sodium hypochlorite can be used for water purification. " \
+        "For adult drinking water, add 16 drops to each gallon and allow it to sit for 30 minutes.")
+    guide.passages.create!(position: 40, heading: "Purifying by boiling",
+      body: "Bring water to a rolling boil for one full minute before drinking.")
+    Passage.rebuild_search_index
+
+    answer = ArchiveAnswer.new("How can I make questionable water safe to drink if I can't boil it?").call
+
+    assert_equal bleach, answer.sources.first.passage
+    assert_match(/unscented household bleach/, answer.sources.first.quote)
+    assert_no_match(/rolling boil/, answer.sources.first.quote)
+  end
+
+  test "uses the first answer and its continuation instead of Q and A page chrome" do
+    guide = Document.create!(title: "Gardening Q&A", original_filename: "gardening.zim",
+      content_type: "application/x-openzim", stored_path: "storage/content/zim/gardening.zim",
+      byte_size: 100, status: "ready", passage_count: 5)
+    heading = "Why did my tomato seedlings stop growing?"
+    guide.passages.create!(position: 100, heading:, body: "#{heading} - Gardening Stack Exchange Questions Tags Users")
+    guide.passages.create!(position: 101, heading:, body: "Home Questions Asked yesterday. My seedlings stopped growing. What went wrong?")
+    answer_passage = guide.passages.create!(position: 102, heading:, body: "3 Answers3 8 Start by checking these common causes:")
+    guide.passages.create!(position: 103, heading:, body: "Compacted soil, poor compost, low nitrogen, low temperature, or inadequate light.")
+    guide.passages.create!(position: 104, heading:, body: "answered today at 10:00 Gardener 500")
+    Passage.rebuild_search_index
+
+    answer = ArchiveAnswer.new(heading).call
+
+    assert_equal answer_passage, answer.sources.first.passage
+    assert_match(/Compacted soil/, answer.sources.first.quote)
+    assert_no_match(/Questions Tags Users|Asked yesterday/, answer.sources.first.quote)
+  end
 end

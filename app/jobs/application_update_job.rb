@@ -21,6 +21,6 @@ class ApplicationUpdateJob < ApplicationJob
   private
 
   def data_root
-    ENV.fetch("EMBER_VAULT_DATA_DIR", Rails.root.join("storage").to_s)
+    EmberVault::Paths.data_root.to_s
   end
 end

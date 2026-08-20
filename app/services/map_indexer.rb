@@ -10,7 +10,7 @@ class MapIndexer
   end
 
   def call
-    path = Rails.root.join(@download.destination_path)
+    path = EmberVault::Paths.resolve(@download.destination_path)
     features = []
     Open3.popen3({ "NODE_PATH" => MODULES.to_s }, "node", SCRIPT.to_s, path.to_s) do |stdin, stdout, stderr, thread|
       stdin.close

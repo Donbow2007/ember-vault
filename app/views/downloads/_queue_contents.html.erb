@@ -7,5 +7,5 @@
       <div class="download-meter"><span><%= download.status.tr("_", " ").upcase %> · <%= download.progress %>%</span><i><b style="width:<%= download.progress %>%"></b></i><small><%= number_to_human_size(download.downloaded_bytes) %> / <%= number_to_human_size(download.display_total_bytes) %></small><div class="download-actions"><% if download.status.in?(%w[queued downloading]) %><%= button_to "STOP", stop_download_path(download), class: "transfer-action" %><% elsif download.status.in?(%w[cancelled failed]) %><%= button_to "RESTART", retry_download_download_path(download), class: "transfer-action" %><% end %><%= button_to "DELETE", download_path(download), method: :delete, class: "transfer-action danger", form: { data: { turbo_confirm: "Delete this download, its files, and all associated search indexes?" } } %></div></div>
     </article>
   <% end %>
-  <% if downloads.empty? %><div class="empty-archive"><b>TRANSFER QUEUE EMPTY</b><p>Run initial setup to select public content packages.</p></div><% end %>
+  <% if downloads.empty? %><div class="empty-archive"><b>TRANSFER QUEUE EMPTY</b><p>Open Setup to select public content packages.</p></div><% end %>
 </div>

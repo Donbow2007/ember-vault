@@ -12,7 +12,7 @@
     <% if response.answer.present? %>
       <div class="assistant-response-copy"><div class="assistant-generated-answer"><%= simple_format(response.answer) %></div><p class="assistant-caution">This cited answer is ready now. A local model is attempting a short refinement; you do not need to wait for it.</p></div>
     <% end %>
-    <div class="assistant-pending"><i></i><p><%= response.cancel_requested? ? "Stopping the local model refinement. The source answer above remains available." : (response.answer.present? ? "Optional local refinement is running with a strict four-second limit." : "Searching the local index for relevant passages.") %></p><% unless response.cancel_requested? %><%= button_to "STOP REFINEMENT", cancel_assistant_response_path(response), class: "assistant-stop-button" %><% end %></div>
+    <div class="assistant-pending"><i></i><p><%= response.cancel_requested? ? "Stopping the local model refinement. The source answer above remains available." : (response.answer.present? ? "Optional local refinement is running with a strict five-second limit." : "Searching the local index for relevant passages.") %></p><% unless response.cancel_requested? %><%= button_to "STOP REFINEMENT", cancel_assistant_response_path(response), class: "assistant-stop-button" %><% end %></div>
   <% elsif response.cancelled? %>
     <div class="assistant-no-answer"><p>This response was stopped. The local model process has been terminated; your documents and search index are unaffected.</p><div><%= link_to "ASK AGAIN", assistant_path(question: response.question), class: "button button-light" %><%= link_to "SEARCH DOCUMENTS", root_path, class: "button button-ghost" %></div></div>
   <% elsif response.failed? %>

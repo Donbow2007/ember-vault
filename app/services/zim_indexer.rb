@@ -5,7 +5,7 @@ class ZimIndexer
 
   def initialize(document, reader: nil)
     @document = document
-    @reader = reader || ZimReader.new(Rails.root.join(document.stored_path))
+    @reader = reader || ZimReader.new(EmberVault::Paths.resolve(document.stored_path))
   end
 
   def call

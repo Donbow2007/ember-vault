@@ -14,9 +14,10 @@ class Document < ApplicationRecord
   private
 
   def remove_stored_file
-    path = Rails.root.join(stored_path).cleanpath
-    archive_root = Rails.root.join("storage", "archive_files").cleanpath
-    File.delete(path) if path.to_s.start_with?("#{archive_root}/") && File.file?(path)
+    path = EmberVault::Paths.resolve(stored_path)
+    File.delete(path) if EmberVault::Paths.within?(path, EmberVault::Paths.archive_files) && File.file?(path)
+    Passage.rebuild_search_index
+  rescue ArgumentError
     Passage.rebuild_search_index
   end
 end

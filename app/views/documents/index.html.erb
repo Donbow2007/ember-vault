@@ -15,11 +15,15 @@
       <div class="list-heading">
         <div><p class="section-index">LOCAL // UNIFIED INVENTORY</p><p class="inventory-note">Downloaded packages and imported documents. Index controls change searchable text without deleting downloaded source files.</p></div>
         <div class="inventory-tools">
-          <%= form_with url: search_path, method: :get, class: "mini-search" do |form| %><%= form.search_field :q, placeholder: "SEARCH ARCHIVE" %><%= form.submit "SEARCH" %><% end %>
           <%= button_to "REINDEX ALL DOWNLOADS", reindex_all_downloads_path, class: "button button-light", form: { data: { turbo_confirm: "Rebuild the search indexes for every completed document download?" } } %>
           <%= link_to "DOWNLOADS", downloads_path, class: "button button-ghost" %>
         </div>
       </div>
+      <%= form_with url: search_path, method: :get, class: "archive-search-input" do |form| %>
+        <span class="search-icon" aria-hidden="true"></span>
+        <%= form.search_field :q, placeholder: "SEARCH THE ENTIRE ARCHIVE...", aria: { label: "Search the archive" }, autocomplete: "off" %>
+        <%= form.submit "SEARCH" %>
+      <% end %>
       <% if @inventory.any? %>
         <div class="document-table">
           <% @inventory.each do |_created_at, type, item| %>

@@ -50,7 +50,6 @@ class ApplicationUpdate
   private
 
   def status_path
-    data_root = ENV.fetch("EMBER_VAULT_DATA_DIR", Rails.root.join("storage").to_s)
-    Pathname.new(data_root).join("update-status.json")
+    EmberVault::Paths.data_root.join("update-status.json")
   end
 end

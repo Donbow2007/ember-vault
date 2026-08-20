@@ -25,6 +25,14 @@ class ContentDownload < ApplicationRecord
     status.in?(%w[queued downloading cancel_requested delete_requested])
   end
 
+  def file_available?
+    return false unless status == "complete" && destination_path.present?
+
+    EmberVault::Paths.resolve(destination_path).file?
+  rescue ArgumentError
+    false
+  end
+
   def purge!
     documents.destroy_all
     remove_content_files
@@ -47,12 +55,16 @@ class ContentDownload < ApplicationRecord
   end
 
   def remove_content_files
-    paths = []
-    paths << Rails.root.join(destination_path).cleanpath if destination_path.present?
-    paths << inferred_destination_path
-    allowed_roots = [ Rails.root.join("storage", "content"), Rails.root.join("storage", "models") ].map(&:to_s)
+    paths = [ inferred_destination_path ]
+    if destination_path.present?
+      begin
+        paths << EmberVault::Paths.resolve(destination_path)
+      rescue ArgumentError
+        nil
+      end
+    end
     paths.flat_map { |path| [ path, path.sub_ext("#{path.extname}.part") ] }.uniq.each do |path|
-      next unless allowed_roots.any? { |root| path.to_s.start_with?(root) }
+      next unless [ EmberVault::Paths.content, EmberVault::Paths.models ].any? { |root| EmberVault::Paths.within?(path, root) }
 
       File.delete(path) if File.file?(path)
     end
@@ -61,7 +73,7 @@ class ContentDownload < ApplicationRecord
   def inferred_destination_path
     extension = download_extension
     safe_id = resource_id.gsub(/[^a-zA-Z0-9_.-]/, "-")
-    root = kind == "model" ? Rails.root.join("storage", "models") : Rails.root.join("storage", "content", kind)
+    root = kind == "model" ? EmberVault::Paths.models : EmberVault::Paths.content_for(kind)
     root.join("#{safe_id}#{extension}")
   end
 

@@ -2,9 +2,10 @@ require "test_helper"
 
 class MapsControllerTest < ActionDispatch::IntegrationTest
   setup do
+    filename = "test-map-#{Process.pid}.pmtiles"
     @download = ContentDownload.create!(resource_id: "test-map", title: "Test Region",
       source_url: "https://github.com/test.pmtiles", kind: "map", status: "complete",
-      destination_path: "storage/content/map/test-map.pmtiles", downloaded_bytes: 16)
+      destination_path: "storage/content/map/#{filename}", downloaded_bytes: 16)
     @path = Rails.root.join(@download.destination_path)
     FileUtils.mkdir_p(@path.dirname)
     File.binwrite(@path, "0123456789abcdef")

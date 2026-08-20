@@ -1,0 +1,224 @@
+#!/usr/bin/env ruby
+
+require_relative "../config/environment"
+require "json"
+
+class AssistantEvaluator
+  Case = Data.define(:question, :document_id, :group)
+  Result = Data.define(:test_case, :sources, :answer, :elapsed_ms) do
+    def found?
+      sources.any?
+    end
+
+    def expected_source?
+      sources.any? { |source| source.passage.document_id == test_case.document_id }
+    end
+
+    def cited?
+      answer.match?(/\[\d+\]/)
+    end
+
+    def noisy?
+      answer.match?(/(?:Home\s+Questions|asked\s+\w+\s+\d|answered\s+\w+\s+\d|Answers\d+|Stack Exchange|window\.|function\s*\()/i)
+    end
+
+    def insufficient?
+      answer == AssistantPrompt::INSUFFICIENT_MESSAGE
+    end
+
+    def to_h
+      {
+        question: test_case.question,
+        expected_document: Document.find(test_case.document_id).title,
+        group: test_case.group,
+        found: found?,
+        expected_source: expected_source?,
+        cited: cited?,
+        noisy: noisy?,
+        insufficient: insufficient?,
+        elapsed_ms:,
+        source_documents: sources.map { |source| source.passage.document.title }.uniq,
+        answer:
+      }
+    end
+  end
+
+  QUOTAS = {
+    "Water Treatment Library" => 60,
+    "Food for Preppers" => 60,
+    "A Library of Knots" => 60,
+    "Canadian Prepper: Winter Prepping" => 50,
+    "Canadian Prepper: Bug Out Roll" => 40,
+    "FOSS Cooking" => 80,
+    "Canning" => 60,
+    "The Great Outdoors Q&A" => 120,
+    "Amateur Radio Q&A" => 90,
+    "Canadian Prepper: Bug Out Concepts" => 50,
+    "Urban Prepper" => 50,
+    "Based.Cooking" => 80,
+    "Gardening Q&A" => 100,
+    "Cooking Q&A" => 100
+  }.freeze
+
+  TOPICS = {
+    "Water Treatment Library" => [
+      "boil questionable water", "chlorinate drinking water", "filter cloudy water", "disinfect water with sunlight",
+      "store emergency drinking water", "treat collected rainwater", "remove Giardia from water", "use household bleach to disinfect water",
+      "distill contaminated water", "test whether water is safe", "clean a drinking-water container", "treat well water",
+      "handle chemical water contamination", "make a drinking-water sand filter", "prevent treated-water recontamination", "collect safe water",
+      "use water-purification tablets", "treat flood water", "choose a drinking-water filter", "find safe drinking water"
+    ],
+    "Food for Preppers" => [
+      "dry fruit", "dehydrate vegetables", "smoke meat for storage", "store grains long term", "make jerky", "ferment vegetables",
+      "pickle food", "use a root cellar", "store potatoes", "preserve eggs", "dry herbs", "store cooking oil",
+      "keep food safe without electricity", "prevent pests in stored food", "package food for long-term storage", "make hardtack",
+      "preserve meat", "store dried beans", "keep stored food dry", "plan an emergency pantry"
+    ],
+    "A Library of Knots" => [
+      "bowline", "clove hitch", "sheet bend", "square knot", "figure-eight knot", "taut-line hitch", "trucker's hitch",
+      "Prusik knot", "timber hitch", "round turn and two half hitches", "fisherman's knot", "water knot", "rolling hitch",
+      "alpine butterfly", "constrictor knot", "sheepshank", "reef knot", "lashing poles", "making a rope ladder", "coiling rope"
+    ],
+    "Canning" => [
+      "pressure-can vegetables", "use a boiling-water canner", "check jar seals", "choose canning jars", "can tomatoes",
+      "can low-acid food", "adjust canning time for altitude", "leave the correct headspace", "prevent botulism",
+      "handle a spoiled jar", "prepare canning lids", "raw-pack food", "hot-pack food", "can meat",
+      "can fruit", "test a pressure canner", "cool canned jars", "reprocess an unsealed jar",
+      "clean canning equipment", "store home-canned food"
+    ]
+  }.freeze
+
+  QUESTION_TEMPLATES = [
+    "How should I %s?",
+    "What are the safest steps for %s?",
+    "What mistakes should I avoid when %s?"
+  ].freeze
+
+  def initialize(limit: 1_000)
+    @limit = limit
+  end
+
+  def run
+    cases = build_cases.first(@limit)
+    abort "Only generated #{cases.size} evaluation questions" unless cases.size == @limit
+
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    results = cases.each_with_index.map do |test_case, index|
+      result = evaluate(test_case)
+      warn "Evaluated #{index + 1}/#{cases.size}" if ((index + 1) % 100).zero?
+      result
+    end
+    total_seconds = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+    report = report_for(results, total_seconds:)
+    output_path = Rails.root.join("tmp", "assistant-evaluation.json")
+    output_path.write(JSON.pretty_generate(report))
+    puts JSON.pretty_generate(report.except(:results))
+    puts "Detailed results: #{output_path}"
+  end
+
+  private
+
+  def build_cases
+    QUOTAS.flat_map do |title, quota|
+      document = Document.find_by!(title:)
+      cases = if TOPICS.key?(title)
+        topic_cases(document)
+      elsif title.in?([ "FOSS Cooking", "Based.Cooking" ])
+        recipe_cases(document)
+      elsif title.end_with?("Q&A")
+        question_heading_cases(document)
+      else
+        video_cases(document)
+      end
+      raise "#{title} produced only #{cases.size} of #{quota} required questions" if cases.size < quota
+
+      evenly_sample(cases, quota)
+    end
+  end
+
+  def topic_cases(document)
+    TOPICS.fetch(document.title).flat_map do |topic|
+      questions = if document.title == "A Library of Knots"
+        [ "How do I tie a #{topic}?", "What is a #{topic} used for?", "What mistakes should I avoid when tying a #{topic}?" ]
+      else
+        QUESTION_TEMPLATES.map { |template| format(template, topic) }
+      end
+      questions.map { |question| Case.new(question:, document_id: document.id, group: "curated-topic") }
+    end
+  end
+
+  def recipe_cases(document)
+    headings = document.passages.where("body LIKE ?", "%Ingredients%")
+      .where.not(heading: [ nil, "", "Home", "Based Cooking" ]).distinct.pluck(:heading)
+      .map { |heading| heading.to_s.squish.sub(/\s*\|\s*Based Cooking\z/i, "") }
+      .select { |heading| heading.length.between?(3, 100) }.uniq.sort
+    headings.map { |heading| Case.new(question: "How do I make #{heading}?", document_id: document.id, group: "recipe") }
+  end
+
+  def question_heading_cases(document)
+    headings = document.passages.where("heading LIKE ?", "%?%")
+      .where.not(heading: [ nil, "" ]).distinct.pluck(:heading)
+      .map { |heading| heading.to_s.squish }
+      .select { |heading| heading.end_with?("?") && heading.length.between?(15, 180) }.uniq.sort
+    headings.map { |heading| Case.new(question: heading, document_id: document.id, group: "archive-question") }
+  end
+
+  def video_cases(document)
+    headings = document.passages.where.not(heading: [ nil, "", "index.html" ]).distinct.pluck(:heading)
+      .map { |heading| heading.to_s.squish.sub(/\s*\|\s*Canadian Prepper\z/i, "") }
+      .select { |heading| heading.length.between?(10, 150) }.uniq.sort
+    headings.map do |heading|
+      question = heading.end_with?("?") ? heading : "What practical guidance is available about #{heading}?"
+      Case.new(question:, document_id: document.id, group: "video-topic")
+    end
+  end
+
+  def evenly_sample(cases, count)
+    return cases if cases.size == count
+
+    count.times.map { |index| cases[(index * cases.size.to_f / count).floor] }
+  end
+
+  def evaluate(test_case)
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    retrieval = ArchiveAnswer.new(test_case.question).call
+    answer = SourceAnswerFormatter.new(question: test_case.question, sources: retrieval.sources).call
+    elapsed_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1_000).round(1)
+    Result.new(test_case:, sources: retrieval.sources, answer:, elapsed_ms:)
+  rescue StandardError => error
+    Result.new(test_case:, sources: [], answer: "EVALUATION ERROR: #{error.class}: #{error.message}", elapsed_ms: 0)
+  end
+
+  def report_for(results, total_seconds:)
+    summary = summarize(results)
+    by_document = results.group_by { |result| result.test_case.document_id }.to_h do |document_id, group|
+      [ Document.find(document_id).title, summarize(group) ]
+    end
+    {
+      generated_at: Time.current.iso8601,
+      summary: summary.merge(total_seconds: total_seconds.round(2)),
+      by_document:,
+      failures: results.reject { |result| result.found? && result.expected_source? && result.cited? && !result.noisy? }.first(100).map(&:to_h),
+      results: results.map(&:to_h)
+    }
+  end
+
+  def summarize(results)
+    count = results.size
+    durations = results.map(&:elapsed_ms).sort
+    {
+      questions: count,
+      found: results.count(&:found?),
+      expected_source: results.count(&:expected_source?),
+      cited: results.count(&:cited?),
+      noisy: results.count(&:noisy?),
+      insufficient: results.count(&:insufficient?),
+      average_ms: (results.sum(&:elapsed_ms) / count).round(1),
+      p95_ms: durations[(count * 0.95).floor],
+      maximum_ms: durations.last
+    }
+  end
+end
+
+limit = Integer(ARGV.fetch(0, "1000"))
+AssistantEvaluator.new(limit:).run

@@ -1,5 +1,3 @@
-require "open3"
-
 class SetupController < ApplicationController
   AI_MODEL_RESOURCES = {
     "smollm2-135m" => {
@@ -21,8 +19,8 @@ class SetupController < ApplicationController
   AI_PROFILES = {
     "disabled" => { name: "Search only", model: nil, size_mb: 0, ram: "< 512 MB", description: "Use full-text search and open exact source passages without an answer assistant." },
     "source-assistant" => { name: "Cited source assistant", model: nil, size_mb: 0, ram: "512 MB", description: "Recommended for Raspberry Pi 3 B. Displays fast answers from retrieved passages and always links the original sources." },
-    "smollm2-135m" => { name: "SmolLM2 135M", model: "SmolLM2-135M-Instruct-Q4_K_M.gguf", size_mb: 105, ram: "768 MB + swap", description: "Shows the cited answer immediately, then attempts an optional four-second local refinement." },
-    "smollm2-360m" => { name: "SmolLM2 360M", model: "SmolLM2-360M-Instruct-Q4_K_M.gguf", size_mb: 271, ram: "1 GB + swap", description: "Experimental refinement tier for faster hardware. The immediate cited answer never waits for it." }
+    "smollm2-135m" => { name: "SmolLM2 135M", model: "SmolLM2-135M-Instruct-Q4_K_M.gguf", size_mb: 105, ram: "768 MB + swap", description: "A legacy micro-model for minimum hardware. Ember keeps the conversational cited answer when this model copies text or cannot improve it." },
+    "smollm2-360m" => { name: "SmolLM2 360M", model: "SmolLM2-360M-Instruct-Q4_K_M.gguf", size_mb: 271, ram: "1 GB + swap", description: "The strongest Pi-oriented option. It receives compact evidence and gets up to five seconds to make safe questions more conversational." }
   }.freeze
 
   def show
@@ -30,6 +28,9 @@ class SetupController < ApplicationController
     @disk_usage = disk_usage
     @disk_free_mb = @disk_usage.fetch(:available).to_f / 1.megabyte
     @ai_profiles = AI_PROFILES
+    @installed_ai_profiles = LocalAiRuntime.downloaded_profiles.to_set
+    @selected_ai_profile = SetupConfiguration.order(created_at: :desc).pick(:ai_profile)
+    @selected_ai_profile = "source-assistant" unless @selected_ai_profile.in?(AI_PROFILES.keys)
   end
 
   def create
@@ -48,11 +49,15 @@ class SetupController < ApplicationController
     cookies.permanent[:theme] = { value: theme, same_site: :lax }
     resources.each do |resource|
       download = ContentDownload.find_or_initialize_by(resource_id: resource.fetch("id"))
+      new_download = download.new_record?
+      file_available = download.file_available?
+      needs_enqueue = new_download || (!file_available && !download.active?)
       download.assign_attributes(title: resource.fetch("title"), source_url: resource.fetch("url"),
         kind: resource.fetch("kind"), expected_bytes: resource.fetch("size_mb", 0).to_i.megabytes,
-        status: download.status == "complete" ? "complete" : "queued")
+        status: file_available ? "complete" : (download.active? ? download.status : "queued"))
+      download.assign_attributes(downloaded_bytes: 0, destination_path: nil, error_message: nil) if needs_enqueue && !new_download
       download.save!
-      ContentDownloadJob.perform_later(download) unless download.status == "complete"
+      ContentDownloadJob.perform_later(download) if needs_enqueue
     end
     redirect_to setup_complete_path(configuration_id: configuration.id)
   end
@@ -65,14 +70,6 @@ class SetupController < ApplicationController
   private
 
   def disk_usage
-    output, status = Open3.capture2("df", "-Pk", Rails.root.to_s)
-    fields = output.lines.last.to_s.split
-    return { used: 0, available: 0, total: 0, percent: 0 } unless status.success? && fields.length >= 6
-
-    used = fields[2].to_i.kilobytes
-    available = fields[3].to_i.kilobytes
-    total = used + available
-    percent = total.positive? ? (used.to_f / total * 100).round(2) : 0
-    { used:, available:, total:, percent: }
+    StorageMetrics.new.call
   end
 end

@@ -33,9 +33,6 @@ $StoragePath = Join-Path $AppRoot "storage"
 $StorageItem = Get-Item $StoragePath -Force
 if (-not ($StorageItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
   Get-ChildItem $StoragePath -Force | Where-Object { $_.Name -ne ".keep" } | Move-Item -Destination $DataRoot
-  Remove-Item (Join-Path $StoragePath ".keep") -Force -ErrorAction SilentlyContinue
-  Remove-Item $StoragePath -Force
-  cmd /c "mklink /J `"$StoragePath`" `"$DataRoot`"" | Out-Null
 }
 
 $env:EMBER_VAULT_DATA_DIR = $DataRoot

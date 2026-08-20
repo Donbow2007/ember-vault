@@ -1,3 +1,7 @@
+<%
+  ember_vault_data_root = ENV["EMBER_VAULT_DATA_PATH"].presence || ENV["EMBER_VAULT_DATA_DIR"].presence || Rails.root.join("storage").to_s
+  ember_vault_portable = ENV["EMBER_VAULT_PORTABLE"] == "1"
+%>
 # SQLite. Versions 3.8.0 and up are supported.
 #   gem install sqlite3
 #
@@ -8,14 +12,18 @@ default: &default
   adapter: sqlite3
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
   timeout: 5000
+  pragmas:
+    journal_mode: wal
+    synchronous: <%= ENV.fetch("EMBER_VAULT_SQLITE_SYNCHRONOUS", ember_vault_portable ? "full" : "normal") %>
+    mmap_size: <%= ENV.fetch("EMBER_VAULT_SQLITE_MMAP_SIZE", ember_vault_portable ? 33_554_432 : 134_217_728) %>
 
 development:
   primary:
     <<: *default
-    database: storage/development.sqlite3
+    database: <%= File.join(ember_vault_data_root, "development.sqlite3").inspect %>
   queue:
     <<: *default
-    database: storage/development_queue.sqlite3
+    database: <%= File.join(ember_vault_data_root, "development_queue.sqlite3").inspect %>
     migrations_paths: db/queue_migrate
 
 # Warning: The database defined as "test" will be erased and
@@ -23,7 +31,7 @@ development:
 # Do not set this db to the same as development or production.
 test:
   <<: *default
-  database: storage/test.sqlite3
+  database: <%= File.join(ember_vault_data_root, "test.sqlite3").inspect %>
 
 
 # SQLite3 write its data on the local filesystem, as such it requires
@@ -35,12 +43,12 @@ test:
 production:
   primary:
     <<: *default
-    database: <%= File.join(ENV.fetch("EMBER_VAULT_DATA_DIR", Rails.root.join("storage").to_s), "production.sqlite3") %>
+    database: <%= File.join(ember_vault_data_root, "production.sqlite3").inspect %>
   cache:
     <<: *default
-    database: <%= File.join(ENV.fetch("EMBER_VAULT_DATA_DIR", Rails.root.join("storage").to_s), "production_cache.sqlite3") %>
+    database: <%= File.join(ember_vault_data_root, "production_cache.sqlite3").inspect %>
     migrations_paths: db/cache_migrate
   queue:
     <<: *default
-    database: <%= File.join(ENV.fetch("EMBER_VAULT_DATA_DIR", Rails.root.join("storage").to_s), "production_queue.sqlite3") %>
+    database: <%= File.join(ember_vault_data_root, "production_queue.sqlite3").inspect %>
     migrations_paths: db/queue_migrate

@@ -44,6 +44,17 @@ bin/jobs
 
 Open <http://localhost:3000>. Browser geolocation works on localhost; remote deployments normally require HTTPS.
 
+## Portable USB or external-drive installation
+
+Ember Vault can keep the application, databases, indexed library, maps, models, settings, and backups on removable storage. After cloning it onto the drive, prepare and start it with:
+
+```bash
+./start-ember-vault setup
+./start-ember-vault
+```
+
+Windows launchers and one-command portable installers are also included. See [Portable Ember Vault](docs/portable-installation.md) for host requirements, safe removal, backups, moving between computers, and Raspberry Pi 3B guidance.
+
 ## Automated installation
 
 Ember Vault includes installers that provision dependencies, prepare the production databases and assets, register a background service, and start the application.

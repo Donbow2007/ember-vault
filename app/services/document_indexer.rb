@@ -35,7 +35,7 @@ class DocumentIndexer
   private
 
   def extract_sections
-    path = Rails.root.join(@document.stored_path)
+    path = EmberVault::Paths.resolve(@document.stored_path)
     case File.extname(@document.original_filename).downcase
     when ".pdf"
       PDF::Reader.new(path).pages.each_with_index.map { |page, index| [ page.text, index + 1 ] }

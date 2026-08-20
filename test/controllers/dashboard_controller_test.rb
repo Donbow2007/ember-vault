@@ -12,6 +12,9 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select ".metric", text: /DEVICE STORAGE.*USED.*FREE/m
     assert_select "form[action='#{theme_setting_path}'] button", text: "DARK"
     assert_select "form[action='#{theme_setting_path}'] button", text: "LIGHT"
+    assert_select "form[action='#{ai_profile_setting_path}']", count: 0
+    assert_select "a[href='#{setup_path}']", text: "SETUP"
+    assert_no_match(/Initial Setup/i, response.body)
     assert_select ".module-card", count: 0
     assert_select ".empty-archive", text: /NO MODULES DOWNLOADED/
   end

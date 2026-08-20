@@ -6,6 +6,7 @@ Rails.application.routes.draw do
   get "assistant/responses/:id", to: "assistant#status", as: :assistant_response
   post "assistant/responses/:id/cancel", to: "assistant#cancel", as: :cancel_assistant_response
   patch "settings/theme", to: "settings#theme", as: :theme_setting
+  patch "settings/ai_profile", to: "settings#ai_profile", as: :ai_profile_setting
   resource :updates, only: :show, controller: "updates" do
     post :check
     post :install
