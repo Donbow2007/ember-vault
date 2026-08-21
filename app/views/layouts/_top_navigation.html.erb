@@ -9,6 +9,7 @@
       <%= link_to mod[:name], mod[:path], class: [ "module-nav-link", ("active" if controller_name == mod[:controller]) ] %>
     <% end %>
     <%= link_to "Transfers", downloads_path, class: ("active" if controller_name == "downloads") %>
+    <%= link_to "Packs", knowledge_packs_path, class: ("active" if controller_name == "knowledge_packs") %>
     <%= link_to "Field Intel", assistant_path, class: ("active" if controller_name == "assistant") %>
     <%= link_to "System", updates_path, class: ("active" if controller_name == "updates") %>
     <%= link_to "Terms", terms_path, class: ("active" if controller_name == "terms") %>

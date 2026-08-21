@@ -97,7 +97,8 @@ class ContentFetcher
 
   def validate_uri!(uri, initial: false)
     raise "Downloads require HTTPS" unless uri.is_a?(URI::HTTPS) && uri.port == 443
-    raise "Unapproved catalog host" if initial && !ALLOWED_HOSTS.include?(uri.host)
+    configured_manifest_host = URI(ENV.fetch("EMBER_VAULT_KNOWLEDGE_MANIFEST_URL", "")).host rescue nil
+    raise "Unapproved catalog host" if initial && !ALLOWED_HOSTS.include?(uri.host) && uri.host != configured_manifest_host
     raise "Unapproved redirect host" if uri.host.blank? || uri.host == "localhost" || uri.host.end_with?(".local")
 
     addresses = @resolver.call(uri.host)

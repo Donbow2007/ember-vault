@@ -46,6 +46,7 @@ class ContentDownload < ApplicationRecord
   end
 
   def enqueue_indexing!
+    return KnowledgePackageInstaller.new(self).call if kind == "knowledge-pack"
     return unless kind.in?(%w[zim document]) && status == "complete" && destination_path.present?
 
     document = documents.first_or_initialize
@@ -92,6 +93,8 @@ class ContentDownload < ApplicationRecord
       ".gguf"
     elsif kind == "document"
       resource_id.start_with?("pmc-") ? ".json" : ".txt"
+    elsif kind == "knowledge-pack"
+      ".zip"
     else
       ".zim"
     end

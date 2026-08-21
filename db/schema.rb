@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_08_20_230000) do
+ActiveRecord::Schema[8.0].define(version: 2026_08_21_140000) do
   create_table "assistant_responses", force: :cascade do |t|
     t.text "question", null: false
     t.text "answer"
@@ -38,6 +38,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_20_230000) do
     t.datetime "updated_at", null: false
     t.integer "deletion_total", default: 0, null: false
     t.integer "deletion_remaining", default: 0, null: false
+    t.integer "package_version"
+    t.string "content_hash"
+    t.string "package_id"
+    t.index ["package_id"], name: "index_content_downloads_on_package_id", unique: true, where: "package_id IS NOT NULL"
   end
 
   create_table "documents", force: :cascade do |t|
