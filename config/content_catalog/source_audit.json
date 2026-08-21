@@ -1,0 +1,114 @@
+{
+  "audit_version": "2026-08-20",
+  "method": "Each accepted file was downloaded, identified as a PDF, parsed with pdfinfo and pdftotext, sampled at the title/front matter and interior pages, measured from the downloaded bytes, and hashed locally with SHA-256. Internet Archive availability alone was not used as rights evidence.",
+  "rights_basis": {
+    "pre_1931_us_publications": "The U.S. Copyright Office states that all works published in the United States before January 1, 1931 are in the public domain.",
+    "pre_1931_us_publications_url": "https://www.copyright.gov/what-is-copyright/",
+    "federal_works": "17 U.S.C. section 105 generally excludes U.S. Government works from copyright protection, subject to statutory exceptions and separately owned material.",
+    "federal_works_url": "https://www.copyright.gov/title17/92chap1.html#105"
+  },
+  "accepted": [
+    {
+      "package_id": "usgs-map-and-compass",
+      "item_url": "https://pubs.usgs.gov/publication/fs03501",
+      "original_source_url": "https://www.usgs.gov/media/files/finding-your-way-map-and-compass",
+      "download_url": "https://pubs.usgs.gov/fs/2001/0035/report.pdf",
+      "author_publisher": "Water Resources Division, U.S. Geological Survey",
+      "publication": "Fact Sheet 035-01, 2001",
+      "format": "PDF",
+      "size_bytes": 204850,
+      "page_count": 2,
+      "sha256": "bc476fdc38e0949f18941cf361242bce8f0c18583111ce7e10b06eb3fc569922",
+      "rights_finding": "USGS item page explicitly labels Sources/Usage as Public Domain.",
+      "redistribution": "approved",
+      "inspection": "Title and both pages parsed; contents cover map scale, distance, direction, bearings, compass use, and magnetic declination."
+    },
+    {
+      "package_id": "ia-home-vegetable-garden-1905",
+      "archive_identifier": "cu31924003329061",
+      "item_url": "https://archive.org/details/cu31924003329061",
+      "original_source": "Doubleday, Page & Company, New York",
+      "download_url": "https://archive.org/download/cu31924003329061/cu31924003329061.pdf",
+      "author_publisher": "Edith Loring Fullerton; Doubleday, Page & Company",
+      "publication": "Published April 1905",
+      "format": "Text PDF",
+      "size_bytes": 21356909,
+      "page_count": 376,
+      "sha256": "6406743d335b9bb62132585a95c6207ca1e513162f8ba983d3705f607012aece",
+      "rights_finding": "Published in the United States in 1905; copyright term expired. Rights conclusion is based on publication date and U.S. Copyright Office guidance, not the Archive listing.",
+      "redistribution": "approved_in_the_united_states",
+      "inspection": "Copyright and publication pages, contents, opening text, and interior cultivation pages parsed. The scan is complete and legible; historical chemical and pest-control advice needs current safety context."
+    },
+    {
+      "package_id": "ia-farm-mechanics-1918",
+      "archive_identifier": "farmmechanicsmac00shearich",
+      "item_url": "https://archive.org/details/farmmechanicsmac00shearich",
+      "original_source": "Frederick J. Drake & Company, Chicago",
+      "download_url": "https://archive.org/download/farmmechanicsmac00shearich/farmmechanicsmac00shearich.pdf",
+      "author_publisher": "Herbert A. Shearer; Frederick J. Drake & Company",
+      "publication": "Copyright and publication year 1918",
+      "format": "Text PDF",
+      "size_bytes": 18059419,
+      "page_count": 264,
+      "sha256": "3da800a0837a606ebbfb087567b50b3a3a22e8b3ff71c45d987e87b4f159f32c",
+      "rights_finding": "Published in the United States in 1918; copyright term expired. Rights conclusion is independent of Archive metadata.",
+      "redistribution": "approved_in_the_united_states",
+      "inspection": "Title, 1918 copyright page, preface, contents, and interior tool, machinery, waterworks, and electrical pages parsed. Scan is complete; hazardous historical methods are labeled in catalog metadata."
+    },
+    {
+      "package_id": "ia-handy-farm-devices-1912",
+      "archive_identifier": "cu31924080109832",
+      "item_url": "https://archive.org/details/cu31924080109832",
+      "original_source": "Orange Judd Company, New York",
+      "download_url": "https://archive.org/download/cu31924080109832/cu31924080109832.pdf",
+      "author_publisher": "Rolfe Cobleigh; Orange Judd Company",
+      "publication": "1912 edition; copyright notice 1909",
+      "format": "Text PDF",
+      "size_bytes": 6126637,
+      "page_count": 304,
+      "sha256": "8b44b9ebd03867b46a970e190cf3edb416d031056c18515fd91522e92760310a",
+      "rights_finding": "Published in the United States no later than 1912; copyright term expired. The scan also states that no known copyright restrictions exist, but term expiry is the controlling evidence.",
+      "redistribution": "approved_in_the_united_states",
+      "inspection": "Title, copyright, contents, and interior illustrated project pages parsed. File is readable and substantively matches its title; projects require modern safety review."
+    },
+    {
+      "package_id": "ia-topography-map-reading-1917",
+      "archive_identifier": "trainingmanualin00spalrich",
+      "item_url": "https://archive.org/details/trainingmanualin00spalrich",
+      "original_source": "U.S. Government Printing Office, Washington",
+      "download_url": "https://archive.org/download/trainingmanualin00spalrich/trainingmanualin00spalrich.pdf",
+      "author_publisher": "George Redfield Spalding and U.S. Army Corps of Engineers; U.S. Government Printing Office",
+      "publication": "1917",
+      "format": "Text PDF",
+      "size_bytes": 15415757,
+      "page_count": 160,
+      "sha256": "dfb8d69d2106852ca12abc641c3ff740026ed270b3c62af40a8bd8c90f50badb",
+      "rights_finding": "1917 U.S. Government Printing Office publication and, independently, a U.S. publication from before 1931.",
+      "redistribution": "approved",
+      "inspection": "Title/front matter and interior topography, printing, coordinate, and reconnaissance pages parsed. Scan is complete; obsolete coordinate and military procedures are labeled historical."
+    }
+  ],
+  "rejected_or_deferred": [
+    {
+      "title": "NAHEMS Guidelines: Biosecurity",
+      "item_url": "https://www.aphis.usda.gov/animal-emergencies/nahems-educational-training-materials",
+      "download_url": "https://www.aphis.usda.gov/sites/default/files/fadprep_nahems_guidelines_biosecurity_0.pdf",
+      "download_result": "Valid 68-page PDF, 2976622 bytes, SHA-256 0aab810c9e1af90e49a6ac6e721a8793111df9cdc01cd0c8686842dc89131115.",
+      "reason": "Deferred for rights review: produced by Iowa State University under a USDA cooperative agreement, so federal hosting alone does not prove that every component is a U.S. Government work or redistributable."
+    },
+    {
+      "title": "Voice Radio Communications Guide for the Fire Service, second edition",
+      "item_url": "https://www.usfa.fema.gov/a-z/health-safety-wellness/index.html",
+      "download_url": "https://www.usfa.fema.gov/downloads/pdf/publications/voice_radio_communications_guide_for_the_fire_service.pdf",
+      "download_result": "Valid 109-page PDF, 6615396 bytes, SHA-256 a2038de9bfd0c0b9285e0fe8cdca43564ef1f35fbd7a7cdd94302bc0a7518517.",
+      "reason": "Deferred for rights review: the document credits a substantive partnership with the International Association of Fire Fighters and does not provide an edition-specific redistribution license."
+    },
+    {
+      "title": "The Weather Guide, sixth edition",
+      "item_url": "https://www.weather.gov/sgx/education",
+      "download_url": "https://www.weather.gov/media/sgx/documents/The_Weather_Guide.pdf",
+      "download_result": "Valid 271-page PDF, 4385574 bytes, SHA-256 0819d330da99ce4de64233a3448cf15cf527d9cd391ae775cc31f3cf287bf4ee.",
+      "reason": "Deferred from the practical catalog because it is a 2012 regional weather/media reference for the San Diego forecast area, not broadly applicable preparedness guidance; embedded third-party material also needs review before self-hosting."
+    }
+  ]
+}

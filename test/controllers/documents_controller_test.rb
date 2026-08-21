@@ -1,6 +1,7 @@
 require "test_helper"
 
 class DocumentsControllerTest < ActionDispatch::IntegrationTest
+  include ActiveJob::TestHelper
   test "combines downloads and imported documents into one inventory without duplicates" do
     download = ContentDownload.create!(resource_id: "downloaded-guide", title: "Downloaded Guide",
       source_url: "https://download.kiwix.org/guide.zim", kind: "zim", status: "complete",
@@ -42,12 +43,17 @@ class DocumentsControllerTest < ActionDispatch::IntegrationTest
   test "imports, indexes, searches, and removes a text document" do
     upload = fixture_file_upload("survival_notes.txt", "text/plain")
 
-    assert_difference("Document.count", 1) do
-      post documents_url, params: { title: "Flood Response", file: upload }
+    assert_enqueued_with(job: IndexDocumentJob) do
+      assert_difference("Document.count", 1) do
+        post documents_url, params: { title: "Flood Response", file: upload }
+      end
     end
 
     document = Document.last
-    assert_redirected_to document_url(document)
+    assert_redirected_to documents_url
+    assert_equal "queued", document.status
+    perform_enqueued_jobs only: IndexDocumentJob
+    document.reload
     assert_equal "ready", document.status
     assert_match %r{\Aarchive_files/}, document.stored_path
     assert document.passage_count.positive?
@@ -57,9 +63,13 @@ class DocumentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "mark", minimum: 1
     assert_select "a", text: "Flood Response"
 
-    assert_difference("Document.count", -1) do
+    assert_enqueued_with(job: DeleteDocumentJob) do
       delete document_url(document)
     end
+    assert Document.exists?(document.id), "request must return before deletion runs"
+    assert_equal "deleting", document.reload.status
+    perform_enqueued_jobs only: DeleteDocumentJob
+    assert_not Document.exists?(document.id)
   end
 
   test "rejects unsupported file formats" do
@@ -68,6 +78,20 @@ class DocumentsControllerTest < ActionDispatch::IntegrationTest
 
     assert_no_difference("Document.count") { post documents_url, params: { file: upload } }
     assert_redirected_to documents_url
+  end
+
+  test "retries a failed deletion" do
+    document = Document.create!(title: "Retry", original_filename: "retry.txt", content_type: "text/plain",
+      stored_path: "storage/archive_files/retry.txt", status: "deletion_failed", error_message: "temporary")
+
+    assert_enqueued_with(job: DeleteDocumentJob, args: [ document ]) do
+      post retry_deletion_document_url(document)
+    end
+
+    assert_redirected_to documents_url
+    get documents_url
+    assert_select ".file-status", text: "DELETION FAILED"
+    assert_select "form[action='#{retry_deletion_document_path(document)}']"
   end
 
   test "opens an exact late search passage with nearby context" do

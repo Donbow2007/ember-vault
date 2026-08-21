@@ -4,11 +4,11 @@ class DownloadsControllerTest < ActionDispatch::IntegrationTest
   include ActiveJob::TestHelper
 
   test "searches not-yet-installed bundled resources by topic" do
-    get downloads_url, params: { catalog_q: "water treatment" }
+    get downloads_url, params: { catalog_q: "safe water emergency" }
 
     assert_response :success
     assert_select ".content-discovery"
-    assert_select ".discovery-results article", text: /Water Treatment Library/
+    assert_select ".discovery-results article", text: /Make Water Safe During an Emergency/
     assert_select "form[action='#{install_downloads_path}']"
   end
 
@@ -21,10 +21,32 @@ class DownloadsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[type='submit'][value='SEARCH PUBLIC BOOKS']"
   end
 
+  test "browses available maps by state with coverage, type, size, and install status" do
+    installed = ContentDownload.create!(resource_id: "texas", title: "Texas",
+      source_url: "https://github.com/Crosstalk-Solutions/project-nomad-maps/raw/refs/heads/master/pmtiles/texas_2025-12.pmtiles",
+      kind: "map", status: "complete")
+
+    get downloads_url, params: { map_state: "AR" }
+
+    assert_response :success
+    assert_select "select[name='map_state'] option", count: 52
+    assert_select "select[name='map_state'] option", text: /District of Columbia — NOT YET AVAILABLE/
+    assert_select ".map-discovery .discovery-results article", count: 1
+    assert_select ".map-discovery", text: /Arkansas statewide/
+    assert_select ".map-discovery", text: /Topographic/
+    assert_select ".map-discovery", text: /400 MB/
+
+    get downloads_url, params: { map_state: "TX" }
+    assert_select ".map-discovery .discovery-results article", count: 1
+    assert_select ".map-discovery .discovery-installed", text: "INSTALLED"
+    assert_select ".map-discovery form[action='#{install_downloads_path}']", count: 0
+    assert ContentDownload.exists?(installed.id)
+  end
+
   test "installs a signed discovery result through the transfer queue" do
     result = ContentDiscovery::Result.new(resource_id: "discovered-guide", title: "Discovered Guide", creator: "Author",
       description: "Guide", source: "Kiwix catalog", source_url: "https://download.kiwix.org/discovered.zim",
-      kind: "zim", size_bytes: 20.megabytes, license: "Source license")
+      kind: "zim", size_bytes: 20.megabytes, license: "Source license", coverage: nil, map_type: nil)
 
     assert_enqueued_with(job: ContentDownloadJob) do
       post install_downloads_url, params: { token: result.token }
@@ -120,11 +142,16 @@ class DownloadsControllerTest < ActionDispatch::IntegrationTest
     Passage.rebuild_search_index
     assert_equal 1, Passage.search("evacuation").size
 
-    assert_difference([ "ContentDownload.count", "Document.count", "Passage.count" ], -1) do
-      delete download_url(download)
+    assert_enqueued_with(job: DeleteContentDownloadJob) do
+      assert_no_difference([ "ContentDownload.count", "Document.count", "Passage.count" ]) do
+        delete download_url(download)
+      end
     end
 
     assert_redirected_to downloads_url
+    assert_equal "deleting", download.reload.status
+    assert File.exist?(content_path), "request must return before file deletion runs"
+    perform_enqueued_jobs only: DeleteContentDownloadJob
     assert_not File.exist?(content_path)
     assert_empty Passage.search("evacuation")
   ensure
@@ -139,6 +166,36 @@ class DownloadsControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to downloads_url
     assert_equal "delete_requested", download.reload.status
+  end
+
+  test "shows deletion progress and retry for a failed deletion" do
+    download = ContentDownload.create!(resource_id: "failed-delete", title: "Failed Delete",
+      source_url: "https://download.kiwix.org/failed.zim", kind: "zim", status: "deletion_failed",
+      deletion_total: 100, deletion_remaining: 68, error_message: "local disk busy")
+
+    get status_downloads_url
+
+    assert_response :success
+    assert_select ".download-meter", text: /68% REMAINING/
+    assert_select "form[action='#{retry_deletion_download_path(download)}']"
+    assert_select ".download-list p", text: "local disk busy"
+  end
+
+  test "delete all queues completed downloads and requests active transfers to stop" do
+    completed = ContentDownload.create!(resource_id: "delete-all-complete", title: "Complete",
+      source_url: "https://download.kiwix.org/complete.zim", kind: "zim", status: "complete")
+    active = ContentDownload.create!(resource_id: "delete-all-active", title: "Active",
+      source_url: "https://download.kiwix.org/active.zim", kind: "zim", status: "downloading")
+
+    assert_enqueued_with(job: DeleteContentDownloadJob, args: [ completed ]) do
+      delete destroy_all_downloads_url
+    end
+
+    assert_redirected_to downloads_url
+    assert_equal "deleting", completed.reload.status
+    assert_equal "delete_requested", active.reload.status
+    assert ContentDownload.exists?(completed.id)
+    assert ContentDownload.exists?(active.id)
   end
 
   test "queues one completed ZIM for indexing" do
@@ -191,13 +248,16 @@ class DownloadsControllerTest < ActionDispatch::IntegrationTest
     document.passages.create!(position: 0, heading: "Shelter", body: "unique shelter index text")
     Passage.rebuild_search_index
 
-    assert_difference([ "Document.count", "Passage.count" ], -1) do
+    assert_enqueued_with(job: DeleteDocumentJob) do
       delete search_index_download_url(download)
     end
 
     assert_redirected_to documents_url
     assert ContentDownload.exists?(download.id)
     assert File.file?(archive_path)
+    assert_equal "deleting", document.reload.status
+    perform_enqueued_jobs only: DeleteDocumentJob
+    assert_not Document.exists?(document.id)
     assert_empty Passage.search("unique shelter")
   ensure
     File.delete(archive_path) if archive_path && File.file?(archive_path)

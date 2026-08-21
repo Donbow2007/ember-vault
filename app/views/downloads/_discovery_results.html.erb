@@ -1,9 +1,10 @@
 <% if results.present? %>
   <div class="discovery-results">
     <% results.each do |result| %>
+      <% installed = local_assigns.fetch(:installed_ids, Set.new).include?(result.resource_id) %>
       <article>
-        <div><small><%= result.source.upcase %> // <%= result.kind.upcase %></small><h3><%= result.title %></h3><p><%= result.creator.presence || result.description.presence || "Offline knowledge resource" %></p><span><%= result.license %><% if result.size_bytes.to_i.positive? %> · <%= number_to_human_size(result.size_bytes) %><% end %></span></div>
-        <%= button_to "INSTALL", install_downloads_path, params: { token: result.token }, class: "discovery-install" %>
+        <div><small><%= result.source.upcase %> // <%= result.kind.upcase %></small><h3><%= result.title.to_s.tr("_", " ") %></h3><p><%= result.creator.presence || result.description.presence || "Offline knowledge resource" %></p><span><%= result.license %><% if result.coverage.present? %> · <%= result.coverage %> statewide<% end %><% if result.map_type.present? %> · <%= result.map_type.titleize %><% end %><% if result.size_bytes.to_i.positive? %> · <%= number_to_human_size(result.size_bytes) %><% end %></span></div>
+        <% if installed %><span class="discovery-installed">INSTALLED</span><% else %><%= button_to "INSTALL", install_downloads_path, params: { token: result.token }, class: "discovery-install" %><% end %>
       </article>
     <% end %>
   </div>

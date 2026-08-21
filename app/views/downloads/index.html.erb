@@ -11,13 +11,26 @@
         <%= form_with url: downloads_path, method: :get, class: "discovery-search" do |form| %><%= form.search_field :catalog_q, value: @catalog_query, placeholder: "TOPIC — WATER, MEDICINE, REPAIR...", required: true %><%= form.submit "SEARCH LOCAL CATALOG" %><% end %>
         <%= render "discovery_results", results: @catalog_results, query: @catalog_query %>
       </div>
+      <div class="discovery-source map-discovery">
+        <div><small>02 // OFFLINE MAP DISCOVERY</small><h2>Browse maps by state.</h2><p>Select where you live or search geographic metadata. Each result is an individual optional PMTiles package—nationwide maps are never selected automatically.</p></div>
+        <%= form_with url: downloads_path, method: :get, class: "map-discovery-search" do |form| %>
+          <% map_options = @map_jurisdictions.map do |place| %>
+            <% label = place.fetch("name") + (place.fetch("available") ? "" : " — NOT YET AVAILABLE") %>
+            <% [ label, place.fetch("code"), { disabled: !place.fetch("available") } ] %>
+          <% end %>
+          <%= form.select :map_state, options_for_select([["CHOOSE A STATE OR DISTRICT", ""]] + map_options, @map_state), {}, aria: { label: "State or district" } %>
+          <%= form.search_field :map_q, value: @map_query, placeholder: "STATE, COUNTY, CITY, REGION, OR MAP TITLE", aria: { label: "Search map geography" } %>
+          <%= form.submit "SHOW MAPS" %>
+        <% end %>
+        <%= render "discovery_results", results: @map_results, query: @map_state.presence || @map_query, installed_ids: @installed_resource_ids %>
+      </div>
       <div class="discovery-source remote">
-        <div><small>02 // ONLINE BOOK DISCOVERY</small><h2>Search public books.</h2><p>Open Library book records with public full-text files supplied by Internet Archive. Papers, journals, and lending-only titles are excluded. Network is used only for this search and selected downloads.</p></div>
+        <div><small>03 // ONLINE BOOK DISCOVERY</small><h2>Search public books.</h2><p>Open Library book records with public full-text files supplied by Internet Archive. Papers, journals, and lending-only titles are excluded. Network is used only for this search and selected downloads.</p></div>
         <%= form_with url: downloads_path, method: :get, class: "discovery-search" do |form| %><%= form.search_field :remote_q, value: @remote_query, placeholder: "TYPE A TOPIC TO FIND PUBLIC BOOKS", required: true %><%= form.submit "SEARCH PUBLIC BOOKS" %><% end %>
         <%= render "discovery_results", results: @remote_results, query: @remote_query %>
       </div>
     </section>
-    <div class="wizard-intro"><p class="section-index">CONTENT // TRANSFER QUEUE</p><h1>Incoming resources.</h1><p>Transfer progress updates automatically while this screen is open.</p><% if @downloads.failed.exists? %><%= button_to "RETRY FAILED DOWNLOADS", retry_failed_downloads_path, class: "button button-light retry-downloads" %><% end %></div>
+    <div class="wizard-intro"><p class="section-index">CONTENT // TRANSFER QUEUE</p><h1>Incoming resources.</h1><p>Transfer progress updates automatically while this screen is open.</p><% if @downloads.failed.exists? %><%= button_to "RETRY FAILED DOWNLOADS", retry_failed_downloads_path, class: "button button-light retry-downloads" %><% end %><% if @downloads.exists? %><%= button_to "DELETE ALL DOWNLOADS", destroy_all_downloads_path, method: :delete, class: "button button-ghost retry-downloads", form: { data: { turbo_confirm: "Delete every download, local file, and associated search index? This cannot be undone." } } %><% end %></div>
     <% active = @downloads.any?(&:active?) %>
     <div id="download_queue" data-controller="download-progress" data-download-progress-url-value="<%= status_downloads_path %>" data-active="<%= active %>">
       <%= render "queue_contents", downloads: @downloads %>

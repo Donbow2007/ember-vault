@@ -1,0 +1,9 @@
+.map-selector { margin-top: 28px; }
+.map-selector-controls, .map-discovery-search { display: grid; grid-template-columns: minmax(220px, .7fr) 1fr auto; gap: 8px; margin: 22px 0; }
+.map-selector-controls select, .map-selector-controls input, .map-discovery-search select, .map-discovery-search input { min-width: 0; height: 48px; border: 1px solid #484a48; background: #090a0a; color: var(--bone); padding: 0 15px; font: 9px var(--mono); }
+.map-discovery-search input[type=submit] { border: 0; background: var(--bone); color: var(--ink); padding: 0 20px; font: 700 8px var(--mono); letter-spacing: 1px; cursor: pointer; }
+.choice-card[hidden] { display: none; }
+.map-selection-empty { border: 1px dashed #3b3d3b; padding: 24px; color: #6d706c; font-size: 8px; text-align: center; }
+.discovery-installed { align-self: center; border: 1px solid #4f6556; color: #8fac98 !important; padding: 12px 16px; letter-spacing: 1px; }
+body[data-theme="light"] .map-selector-controls select, body[data-theme="light"] .map-selector-controls input, body[data-theme="light"] .map-discovery-search select, body[data-theme="light"] .map-discovery-search input { background: #f8f6ef; color: #171918; }
+@media(max-width: 800px) { .map-selector-controls, .map-discovery-search { grid-template-columns: 1fr; } }

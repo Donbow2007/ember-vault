@@ -9,4 +9,5 @@
     <div class="update-controls"><%= button_to "CHECK GITHUB", check_updates_path, class: "button button-ghost" %><%= button_to "BACK UP + INSTALL", install_updates_path, class: "button button-light", disabled: @status[:state] == "running" %></div>
   </section>
   <aside class="update-warning"><b>POWER SAFETY</b><p>Do not disconnect power while an update is running. Downloaded ZIM files, maps, imported documents, search indexes, and settings are stored outside Git and are never replaced by the updater.</p></aside>
+  <p><%= link_to "VIEW SAFETY DISCLAIMER & TERMS OF USE", terms_path, class: "button button-ghost" %></p>
 </main>

@@ -2,7 +2,8 @@ require "net/http"
 require "json"
 
 class ContentDiscovery
-  Result = Data.define(:resource_id, :title, :creator, :description, :source, :source_url, :kind, :size_bytes, :license) do
+  Result = Data.define(:resource_id, :title, :creator, :description, :source, :source_url, :kind, :size_bytes, :license,
+    :coverage, :map_type) do
     def token
       Rails.application.message_verifier(:content_discovery).generate(to_h, expires_in: 2.hours)
     end
@@ -13,11 +14,29 @@ class ContentDiscovery
     return [] if terms.empty?
 
     ContentCatalog.new.searchable_resources.filter_map do |resource|
-      haystack = [ resource["title"], resource["name"], resource["description"], resource["id"] ].join(" ").downcase
+      haystack = [ resource["title"], resource["name"], resource["description"], resource["id"], resource["region"],
+        resource["admin1_name"], resource["admin1_code"], resource["county"], resource["locality"],
+        resource["coverage_level"], resource["map_type"], resource["organization"], resource["author"],
+        resource["evidence_scope"], resource["geographic_coverage"], Array(resource["tags"]).join(" "),
+        resource["safety_metadata"]&.values&.join(" ") ].join(" ").downcase
       next unless terms.all? { |term| haystack.include?(term) }
 
-      result_from(resource.merge("source" => "Kiwix catalog", "license" => "Source license"))
+      result_from(resource.merge("source" => resource["source"] || "Ember Vault catalog",
+        "license" => resource["license"] || "See publisher terms"))
     end.first(30)
+  end
+
+  def maps(query: nil, jurisdiction: nil)
+    resources = jurisdiction.present? ? ContentCatalog.new.maps_for(jurisdiction) : ContentCatalog.new.map_resources
+    terms = search_terms(query)
+    resources.filter_map do |resource|
+      haystack = [ resource["title"], resource["description"], resource["region"], resource["admin1_name"],
+        resource["admin1_code"], resource["county"], resource["locality"], resource["coverage_level"],
+        resource["map_type"] ].join(" ").downcase
+      next unless terms.all? { |term| haystack.include?(term) }
+
+      result_from(resource)
+    end
   end
 
   def remote(query)
@@ -53,7 +72,7 @@ class ContentDiscovery
           title: item["title"].to_s.first(300), creator: Array(item["author_name"]).join(", ").first(200),
           description: [ "Public full-text book", item["first_publish_year"] ].compact.join(" · "),
           source: "Open Library / Internet Archive", source_url: archive_download_url(identifier, file.fetch("name")),
-          kind: "document", size_bytes: file["size"].to_i, license: "Public full-text scan")
+          kind: "document", size_bytes: file["size"].to_i, license: "Public full-text scan", coverage: nil, map_type: nil)
     end.compact
   end
 
@@ -79,7 +98,7 @@ class ContentDiscovery
         title: item["title"].to_s.first(300), creator: Array(item["creator"]).join(", ").first(200),
         description: Array(item["description"]).join(" ").first(500), source: "Internet Archive",
         source_url: archive_download_url(item.fetch("identifier"), file.fetch("name")), kind: "document",
-        size_bytes: file["size"].to_i, license: license)
+        size_bytes: file["size"].to_i, license: license, coverage: nil, map_type: nil)
     end
   end
 
@@ -116,7 +135,7 @@ class ContentDiscovery
         creator: Array(item["authors"]).filter_map { |author| author["name"] }.join(", ").first(200),
         description: "Open-access biomedical full text prepared for local indexing.", source: "PubMed Central OA",
         source_url: "https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_JSON/#{pmcid}/UNICODE",
-        kind: "document", size_bytes: 0, license: "PMC Open Access — verify article license")
+        kind: "document", size_bytes: 0, license: "PMC Open Access — verify article license", coverage: nil, map_type: nil)
     end
   end
 
@@ -138,8 +157,9 @@ class ContentDiscovery
   def result_from(resource)
     Result.new(resource_id: resource.fetch("id"), title: resource["title"] || resource["name"], creator: nil,
       description: resource["description"], source: resource.fetch("source"), source_url: resource.fetch("url"),
-      kind: resource.fetch("kind", resource["type"] || "zim"), size_bytes: resource.fetch("size_mb", 0).to_i.megabytes,
-      license: resource.fetch("license"))
+      kind: resource.fetch("kind", resource["type"] || "zim"),
+      size_bytes: resource.fetch("size_bytes", resource.fetch("size_mb", 0).to_i.megabytes).to_i,
+      license: resource.fetch("license"), coverage: resource["admin1_name"], map_type: resource["map_type"])
   end
 
   def search_terms(query)

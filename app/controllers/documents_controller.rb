@@ -6,11 +6,18 @@ class DocumentsController < ApplicationController
   MAX_FILE_SIZE = 20.megabytes
 
   def index
-    @documents = Document.where(content_download_id: nil).order(created_at: :desc)
-    @downloaded_content = ContentDownload.where(status: "complete", kind: %w[zim document map])
-      .includes(:documents).order(created_at: :desc)
-    @inventory = (@downloaded_content.map { |download| [ download.created_at, :download, download ] } +
-      @documents.map { |document| [ document.created_at, :document, document ] }).sort_by(&:first).reverse
+    load_inventory
+  end
+
+  def status
+    load_inventory
+    render partial: "inventory", locals: { inventory: @inventory }
+  end
+
+  def retry_deletion
+    document = Document.find(params[:id])
+    DeleteDocumentJob.perform_later(document) if document.status == "deletion_failed"
+    redirect_to documents_path, notice: "Deletion returned to the queue for #{document.title}."
   end
 
   def show
@@ -76,19 +83,30 @@ class DocumentsController < ApplicationController
     document = Document.create!(title: params[:title].presence || File.basename(upload.original_filename, extension).humanize,
       original_filename: File.basename(upload.original_filename), content_type: upload.content_type.presence || "application/octet-stream",
       stored_path: EmberVault::Paths.relative(stored_path), byte_size: upload.size, status: "queued")
-    IndexDocumentJob.perform_now(document)
-    redirect_to document_path(document), notice: document.ready? ? "Document indexed successfully." : "Document could not be indexed."
+    IndexDocumentJob.perform_later(document)
+    redirect_to documents_path, notice: "#{document.title} was queued for indexing."
   rescue StandardError => error
     File.delete(stored_path) if defined?(stored_path) && File.file?(stored_path)
     redirect_to documents_path, alert: "Import failed: #{error.message.to_s.first(160)}"
   end
 
   def destroy
-    Document.find(params[:id]).destroy!
-    redirect_to documents_path, notice: "Document removed from the local archive."
+    document = Document.find(params[:id])
+    total = document.passages.count
+    document.update!(status: "deleting", deletion_total: total, deletion_remaining: total, error_message: nil)
+    DeleteDocumentJob.perform_later(document)
+    redirect_to documents_path, notice: "#{document.title} was queued for deletion."
   end
 
   private
+
+  def load_inventory
+    @documents = Document.where(content_download_id: nil).order(created_at: :desc)
+    @downloaded_content = ContentDownload.where(status: %w[complete deleting deletion_failed], kind: %w[zim document map])
+      .includes(:documents).order(created_at: :desc)
+    @inventory = (@downloaded_content.map { |download| [ download.created_at, :download, download ] } +
+      @documents.map { |document| [ document.created_at, :document, document ] }).sort_by(&:first).reverse
+  end
 
   def load_original_source
     if @focused_passage.source_mime == "text/html"

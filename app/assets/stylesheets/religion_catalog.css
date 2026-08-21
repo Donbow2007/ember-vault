@@ -1,0 +1,12 @@
+.religion-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.religion-options section { border: 1px solid #393b39; padding: 16px; }
+.religion-options h3 { margin: 0 0 12px; color: var(--ember); font: 500 12px var(--mono); text-transform: uppercase; }
+.religion-options label { display: grid; grid-template-columns: 20px 1fr; gap: 12px; position: relative; cursor: pointer; }
+.religion-options input { position: absolute; opacity: 0; }
+.religion-options .choice-check { position: relative; inset: auto; margin-top: 2px; }
+.religion-options input:checked + .choice-check { background: var(--ember); border-color: var(--ember); }
+.religion-options input:checked + .choice-check::after { content: "✓"; color: #080909; position: absolute; left: 3px; top: -2px; }
+.religion-options b { font: 500 15px var(--display); text-transform: uppercase; }
+.religion-options p { margin: 5px 0; color: #858783; font-size: 8px; }
+.religion-options small { color: #626562; font-size: 7px; line-height: 1.5; }
+@media(max-width: 800px) { .religion-options { grid-template-columns: 1fr; } }

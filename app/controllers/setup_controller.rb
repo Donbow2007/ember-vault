@@ -25,6 +25,8 @@ class SetupController < ApplicationController
 
   def show
     @catalog = ContentCatalog.new
+    @terms = TermsDocument.new
+    @terms_required = !TermsAcceptance.current?(@terms)
     @disk_usage = disk_usage
     @disk_free_mb = @disk_usage.fetch(:available).to_f / 1.megabyte
     @ai_profiles = AI_PROFILES
@@ -34,16 +36,29 @@ class SetupController < ApplicationController
   end
 
   def create
+    terms = TermsDocument.new
+    unless TermsAcceptance.current?(terms) || ActiveModel::Type::Boolean.new.cast(params[:terms_accepted])
+      return redirect_to(setup_path, alert: "You must read and accept the current Safety Disclaimer and Terms of Use before completing setup.")
+    end
+
     catalog = ContentCatalog.new
-    selected_keys = Array(params[:packages]).compact_blank + params.fetch(:tiers, {}).values.compact_blank + [ params[:wikipedia] ].compact_blank
+    selected_keys = Array(params[:packages]).compact_blank + [ params[:knowledge_preset] ].compact_blank +
+      Array(params[:religion]).compact_blank + [ params[:wikipedia] ].compact_blank
     resources = catalog.resolve(selected_keys)
     ai_profile = AI_PROFILES.key?(params[:ai_profile]) ? params[:ai_profile] : "disabled"
     resources << AI_MODEL_RESOURCES.fetch(ai_profile) if AI_MODEL_RESOURCES.key?(ai_profile)
+    required_bytes = resources.sum { |resource| resource.fetch("size_bytes", resource.fetch("size_mb", 0).to_i.megabytes).to_i }
+    available_bytes = StorageMetrics.new.call.fetch(:available)
+    if available_bytes.positive? && required_bytes > available_bytes
+      return redirect_to(setup_path, alert: "Selected downloads need about #{helpers.number_to_human_size(required_bytes)}, " \
+        "but only #{helpers.number_to_human_size(available_bytes)} is available. Reduce the selection or free storage first.")
+    end
     theme = SetupConfiguration::THEMES.include?(params[:theme]) ? params[:theme] : "dark"
     capabilities = Array(params[:capabilities]).compact_blank & %w[information education]
     capabilities << "ai" unless ai_profile == "disabled"
     projected_size_mb = resources.sum { |resource| resource.fetch("size_mb", 0).to_i }
 
+    TermsAcceptance.accept_current!(terms)
     configuration = SetupConfiguration.create!(capabilities:, selected_resources: selected_keys,
       ai_profile:, theme:, projected_size_mb:, completed_at: Time.current)
     cookies.permanent[:theme] = { value: theme, same_site: :lax }
@@ -53,7 +68,8 @@ class SetupController < ApplicationController
       file_available = download.file_available?
       needs_enqueue = new_download || (!file_available && !download.active?)
       download.assign_attributes(title: resource.fetch("title"), source_url: resource.fetch("url"),
-        kind: resource.fetch("kind"), expected_bytes: resource.fetch("size_mb", 0).to_i.megabytes,
+        kind: resource.fetch("kind"),
+        expected_bytes: resource.fetch("size_bytes", resource.fetch("size_mb", 0).to_i.megabytes).to_i,
         status: file_available ? "complete" : (download.active? ? download.status : "queued"))
       download.assign_attributes(downloaded_bytes: 0, destination_path: nil, error_message: nil) if needs_enqueue && !new_download
       download.save!

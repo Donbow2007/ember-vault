@@ -7,6 +7,7 @@ Rails.application.routes.draw do
   post "assistant/responses/:id/cancel", to: "assistant#cancel", as: :cancel_assistant_response
   patch "settings/theme", to: "settings#theme", as: :theme_setting
   patch "settings/ai_profile", to: "settings#ai_profile", as: :ai_profile_setting
+  get "terms", to: "terms#show", as: :terms
   resource :updates, only: :show, controller: "updates" do
     post :check
     post :install
@@ -17,6 +18,8 @@ Rails.application.routes.draw do
     post :reindex, on: :member
   end
   resources :documents, only: [ :index, :show, :create, :destroy ] do
+    get :status, on: :collection
+    post :retry_deletion, on: :member
     get :source_entry, on: :member
     get :source_page, on: :member
     get :zim_asset, on: :member
@@ -25,11 +28,13 @@ Rails.application.routes.draw do
   get "setup/complete", to: "setup#complete", as: :setup_complete
   resources :downloads, only: [ :index, :destroy ] do
     get :status, on: :collection
+    delete :destroy_all, on: :collection
     post :retry_failed, on: :collection
     post :reindex_all, on: :collection
     post :install, on: :collection
     post :stop, on: :member
     post :retry_download, on: :member
+    post :retry_deletion, on: :member
     post :index_content, on: :member
     delete :search_index, on: :member
   end

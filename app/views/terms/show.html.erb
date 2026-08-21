@@ -1,0 +1,5 @@
+<% content_for :title, "Safety Disclaimer & Terms of Use — Ember Vault" %>
+<main class="terms-shell">
+  <header class="terms-header"><p class="section-index">SYSTEM // LEGAL &amp; SAFETY</p><h1><%= @terms.title %></h1><p>Version <%= @terms.version %> · Last updated <%= @terms.last_updated.to_fs(:long) %></p><% if @acceptance %><small>Accepted locally <%= @acceptance.accepted_at.to_fs(:long) %> with Ember Vault <%= @acceptance.application_version %>.</small><% end %></header>
+  <%= render "terms/terms", terms: @terms %>
+</main>

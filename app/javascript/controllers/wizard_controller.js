@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["step", "indicator", "back", "next", "finish", "counter", "total", "bar", "summary", "storageSelection", "storageSelectionBar", "storageProjectedFree", "storageSummary", "storageTrack"]
+  static targets = ["step", "indicator", "back", "next", "finish", "counter", "total", "bar", "summary", "storageSelection", "storageSelectionBar", "storageProjectedFree", "storageSummary", "storageTrack", "termsAcceptance"]
   static values = { storageTotalMb: Number, storageUsedMb: Number, storageFreeMb: Number }
 
   connect() {
@@ -11,6 +11,7 @@ export default class extends Controller {
   }
 
   next() {
+    if (!this.termsAcceptedForCurrentStep()) return
     if (this.position < this.stepTargets.length - 1) this.position += 1
     this.render()
   }
@@ -21,7 +22,13 @@ export default class extends Controller {
   }
 
   go(event) {
-    this.position = Number(event.currentTarget.dataset.step)
+    const destination = Number(event.currentTarget.dataset.step)
+    if (destination > this.position && !this.termsAcceptedForCurrentStep()) return
+    this.position = destination
+    this.render()
+  }
+
+  termsChanged() {
     this.render()
   }
 
@@ -40,7 +47,13 @@ export default class extends Controller {
   update() {
     const selected = [...this.element.querySelectorAll("input[data-size]:checked")]
       .filter((input) => Number(input.dataset.size || 0) > 0)
-    const megabytes = selected.reduce((total, input) => total + Number(input.dataset.size || 0), 0)
+    const resources = new Map()
+    selected.forEach((input) => {
+      const ids = (input.dataset.packageIds || input.value).split(",")
+      const sizes = (input.dataset.packageSizes || input.dataset.size || "0").split(",")
+      ids.forEach((id, index) => resources.set(id, Number(sizes[index] || 0)))
+    })
+    const megabytes = [...resources.values()].reduce((total, size) => total + size, 0)
     const usedPercent = this.storageTotalMbValue > 0 ? (this.storageUsedMbValue / this.storageTotalMbValue) * 100 : 0
     const selectedPercent = this.storageTotalMbValue > 0 ? (megabytes / this.storageTotalMbValue) * 100 : 0
     const visibleSelectedPercent = Math.min(selectedPercent, Math.max(100 - usedPercent, 0))
@@ -49,7 +62,7 @@ export default class extends Controller {
 
     this.totalTarget.textContent = this.formatSize(megabytes)
     this.barTarget.style.width = `${Math.min(selectedPercent, 100)}%`
-    this.summaryTarget.textContent = selected.length === 0 ? "No content packages selected." : `${selected.length} package selections ready for review.`
+    this.summaryTarget.textContent = resources.size === 0 ? "No content packages selected." : `${resources.size} unique packages ready for review.`
     this.storageSelectionTargets.forEach((target) => { target.textContent = this.formatSize(megabytes) })
     this.storageSelectionBarTargets.forEach((target) => { target.style.width = `${visibleSelectedPercent}%` })
     this.storageProjectedFreeTargets.forEach((target) => { target.textContent = this.formatSize(projectedFree) })
@@ -57,7 +70,7 @@ export default class extends Controller {
       target.classList.toggle("over-capacity", exceedsStorage)
       target.setAttribute("aria-label", `${this.formatSize(this.storageUsedMbValue)} currently used, ${this.formatSize(megabytes)} selected, ${this.formatSize(projectedFree)} projected free`)
     })
-    this.storageSummaryTargets.forEach((target) => { target.textContent = this.storageMessage(selected.length, megabytes, projectedFree, exceedsStorage) })
+    this.storageSummaryTargets.forEach((target) => { target.textContent = this.storageMessage(resources.size, megabytes, projectedFree, exceedsStorage) })
   }
 
   render() {
@@ -70,8 +83,14 @@ export default class extends Controller {
     this.backTarget.disabled = this.position === 0
     this.nextTarget.hidden = final
     this.finishTarget.hidden = !final
+    this.nextTarget.disabled = !this.termsAcceptedForCurrentStep()
     this.counterTarget.textContent = `0${this.position + 1} / 0${this.stepTargets.length}`
     window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  termsAcceptedForCurrentStep() {
+    const current = this.stepTargets[this.position]
+    return !current?.dataset.termsStep || (this.hasTermsAcceptanceTarget && this.termsAcceptanceTarget.checked)
   }
 
   formatSize(megabytes) {
