@@ -3,13 +3,19 @@ class DownloadsController < ApplicationController
 
   def index
     @downloads = ContentDownload.order(created_at: :desc)
+    catalog = ContentCatalog.new
+    @map_jurisdictions = catalog.map_jurisdictions
+    @map_state = params[:map_state].to_s.strip
+    @map_query = params[:map_q].to_s.strip
     @catalog_query = params[:catalog_q].to_s.strip
     @remote_query = params[:remote_q].to_s.strip
     @catalog_results = ContentDiscovery.new.local(@catalog_query) if @catalog_query.present?
     @remote_results = ContentDiscovery.new.remote(@remote_query) if @remote_query.present?
+    @map_results = ContentDiscovery.new.maps(query: @map_query, jurisdiction: @map_state) if @map_query.present? || @map_state.present?
     installed_ids = @downloads.pluck(:resource_id).to_set
     @catalog_results&.reject! { |result| installed_ids.include?(result.resource_id) }
     @remote_results&.reject! { |result| installed_ids.include?(result.resource_id) }
+    @installed_resource_ids = installed_ids
   end
 
   def status
@@ -25,6 +31,18 @@ class DownloadsController < ApplicationController
       ContentDownloadJob.perform_later(download)
     end
     redirect_to downloads_path, notice: "#{count} failed downloads returned to the queue."
+  end
+
+  def destroy_all
+    count = ContentDownload.count
+    ContentDownload.find_each do |download|
+      if download.status.in?(%w[queued downloading cancel_requested])
+        download.update!(status: "delete_requested")
+      elsif download.status != "deleting"
+        download.enqueue_deletion!
+      end
+    end
+    redirect_to downloads_path, notice: "Deletion queued for #{count} #{'download'.pluralize(count)}."
   end
 
   def install
@@ -65,6 +83,12 @@ class DownloadsController < ApplicationController
     redirect_to downloads_path, notice: "#{download.title} returned to the queue."
   end
 
+  def retry_deletion
+    download = ContentDownload.find(params[:id])
+    download.enqueue_deletion! if download.status == "deletion_failed"
+    redirect_to downloads_path, notice: "Deletion returned to the queue for #{download.title}."
+  end
+
   def index_content
     download = ContentDownload.find(params[:id])
     if download.kind.in?(%w[zim document]) && download.status == "complete"
@@ -78,10 +102,12 @@ class DownloadsController < ApplicationController
 
   def search_index
     download = ContentDownload.find(params[:id])
-    removed = download.documents.count
-    download.documents.destroy_all
-    Passage.rebuild_search_index
-    redirect_to documents_path, notice: "Removed #{removed} search #{'index'.pluralize(removed)} for #{download.title}."
+    download.documents.find_each do |document|
+      total = document.passages.count
+      document.update!(status: "deleting", deletion_total: total, deletion_remaining: total, error_message: nil)
+      DeleteDocumentJob.perform_later(document)
+    end
+    redirect_to documents_path, notice: "Search index deletion queued for #{download.title}."
   end
 
   def destroy
@@ -90,9 +116,8 @@ class DownloadsController < ApplicationController
       download.update!(status: "delete_requested")
       notice = "Deletion requested for #{download.title}; its worker is shutting down."
     else
-      title = download.title
-      download.purge!
-      notice = "#{title}, its files, and its search index were removed."
+      download.enqueue_deletion! unless download.status == "deleting"
+      notice = "#{download.title} was queued for deletion."
     end
     redirect_to downloads_path, notice:
   end

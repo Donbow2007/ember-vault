@@ -2,6 +2,7 @@ require "net/http"
 require "uri"
 require "resolv"
 require "ipaddr"
+require "digest"
 
 class ContentFetcher
   class TransferCancelled < StandardError
@@ -13,7 +14,9 @@ class ContentFetcher
     end
   end
 
-  ALLOWED_HOSTS = %w[download.kiwix.org archive.download.kiwix.org github.com raw.githubusercontent.com archive.org www.ncbi.nlm.nih.gov huggingface.co].freeze
+  ALLOWED_HOSTS = %w[download.kiwix.org archive.download.kiwix.org github.com raw.githubusercontent.com archive.org
+    www.ncbi.nlm.nih.gov huggingface.co www.gutenberg.org gutenberg.org www.ready.gov stacks.cdc.gov www.osha.gov
+    www.fema.gov www.weather.gov www.aphis.usda.gov armypubs.army.mil ods.od.nih.gov research.fs.usda.gov].freeze
   MAX_REDIRECTS = 5
   BLOCKED_NETWORKS = %w[
     0.0.0.0/8 10.0.0.0/8 100.64.0.0/10 127.0.0.0/8 169.254.0.0/16 172.16.0.0/12
@@ -69,6 +72,7 @@ class ContentFetcher
             @download.update_columns(downloaded_bytes: bytes, updated_at: Time.current) if (bytes % 1.megabyte) < chunk.bytesize
           end
         end
+        verify_checksum!(temporary_path)
         final_path = destination_path
         File.rename(temporary_path, final_path)
         @download.update!(downloaded_bytes: bytes)
@@ -85,7 +89,7 @@ class ContentFetcher
   def handle_cancellation(action)
     File.delete(@temporary_path) if @temporary_path && File.file?(@temporary_path)
     if action == :delete
-      @download.purge!
+      @download.enqueue_deletion!
     else
       @download.update!(status: "cancelled", downloaded_bytes: 0, error_message: nil)
     end
@@ -103,6 +107,14 @@ class ContentFetcher
 
   def public_address?(address)
     BLOCKED_NETWORKS.none? { |network| network.include?(address) }
+  end
+
+  def verify_checksum!(path)
+    expected = ContentCatalog.new.resource(@download.resource_id)&.fetch("sha256", nil)
+    return if expected.blank?
+
+    actual = Digest::SHA256.file(path).hexdigest
+    raise "Download checksum did not match the curated catalog" unless ActiveSupport::SecurityUtils.secure_compare(actual, expected)
   end
 
   def destination_path

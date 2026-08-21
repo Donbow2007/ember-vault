@@ -1,7 +1,7 @@
 require "uri"
 
 class ContentDownload < ApplicationRecord
-  STATUSES = %w[queued downloading cancel_requested cancelled delete_requested complete failed].freeze
+  STATUSES = %w[queued downloading cancel_requested cancelled delete_requested deleting deletion_failed complete failed].freeze
   scope :failed, -> { where(status: "failed") }
   has_many :documents, dependent: :destroy
   has_many :map_features, dependent: :destroy
@@ -22,7 +22,13 @@ class ContentDownload < ApplicationRecord
   end
 
   def active?
-    status.in?(%w[queued downloading cancel_requested delete_requested])
+    status.in?(%w[queued downloading cancel_requested delete_requested deleting])
+  end
+
+  def deletion_progress
+    return 0 if deletion_total.to_i.zero?
+
+    (deletion_remaining.to_f / deletion_total * 100).ceil.clamp(0, 100)
   end
 
   def file_available?
@@ -33,11 +39,10 @@ class ContentDownload < ApplicationRecord
     false
   end
 
-  def purge!
-    documents.destroy_all
-    remove_content_files
-    destroy!
-    Passage.rebuild_search_index
+  def enqueue_deletion!
+    total = Passage.where(document_id: documents.select(:id)).count
+    update!(status: "deleting", deletion_total: total, deletion_remaining: total, error_message: nil)
+    DeleteContentDownloadJob.perform_later(self)
   end
 
   def enqueue_indexing!

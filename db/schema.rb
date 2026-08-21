@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_08_18_213000) do
+ActiveRecord::Schema[8.0].define(version: 2026_08_20_230000) do
   create_table "assistant_responses", force: :cascade do |t|
     t.text "question", null: false
     t.text "answer"
@@ -36,6 +36,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_18_213000) do
     t.text "error_message"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "deletion_total", default: 0, null: false
+    t.integer "deletion_remaining", default: 0, null: false
   end
 
   create_table "documents", force: :cascade do |t|
@@ -50,6 +52,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_18_213000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "content_download_id"
+    t.integer "deletion_total", default: 0, null: false
+    t.integer "deletion_remaining", default: 0, null: false
     t.index ["content_download_id"], name: "index_documents_on_content_download_id"
     t.index ["created_at"], name: "index_documents_on_created_at"
     t.index ["status"], name: "index_documents_on_status"
@@ -91,6 +95,15 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_18_213000) do
     t.datetime "updated_at", null: false
     t.string "ai_profile", default: "disabled", null: false
     t.string "theme", default: "dark", null: false
+  end
+
+  create_table "terms_acceptances", force: :cascade do |t|
+    t.string "terms_version", null: false
+    t.datetime "accepted_at", null: false
+    t.string "application_version", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["terms_version"], name: "index_terms_acceptances_on_terms_version", unique: true
   end
 
   add_foreign_key "documents", "content_downloads"

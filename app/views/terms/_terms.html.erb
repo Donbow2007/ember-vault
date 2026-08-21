@@ -1,0 +1,5 @@
+<article class="terms-document" aria-label="Safety Disclaimer and Terms of Use">
+  <% terms.sections.each do |section| %>
+    <section><h2><%= section.fetch("number") %>. <%= section.fetch("title") %></h2><% section.fetch("paragraphs").each do |paragraph| %><p><%= paragraph %></p><% end %></section>
+  <% end %>
+</article>
