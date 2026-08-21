@@ -2,5 +2,5 @@
   <header><div><span>DEVICE STORAGE</span><strong><%= number_to_human_size(@disk_usage.fetch(:used)) %> USED <em>/</em> <%= number_to_human_size(@disk_usage.fetch(:available)) %> FREE</strong></div><div><span>SELECTED MEDIA</span><strong data-wizard-target="storageSelection">0 MB</strong></div></header>
   <div class="archive-storage-track" data-wizard-target="storageTrack" role="img" aria-label="<%= number_to_human_size(@disk_usage.fetch(:used)) %> currently used and no additional media selected"><i class="storage-current" style="width:<%= @disk_usage.fetch(:percent) %>%"></i><i class="storage-selected" data-wizard-target="storageSelectionBar"></i></div>
   <div class="archive-storage-legend"><span><i class="current-key"></i>CURRENTLY USED</span><span><i class="selected-key"></i>SELECTED DOWNLOADS</span><span>PROJECTED FREE <b data-wizard-target="storageProjectedFree"><%= number_to_human_size(@disk_usage.fetch(:available)) %></b></span></div>
-  <p data-wizard-target="storageSummary">Choose maps, archive tiers, or a model to preview their storage use.</p>
+  <p data-wizard-target="storageSummary">Choose library content or an optional model to preview its storage use.</p>
 </div>

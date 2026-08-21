@@ -99,7 +99,7 @@ export default class extends Controller {
   }
 
   storageMessage(selectionCount, megabytes, projectedFree, exceedsStorage) {
-    if (selectionCount === 0) return "Choose maps, archive tiers, or a model to preview their storage use."
+    if (selectionCount === 0) return "Choose library content or an optional model to preview its storage use."
     if (exceedsStorage) return `Selected media exceeds available storage by ${this.formatSize(megabytes - this.storageFreeMbValue)}.`
 
     return `${selectionCount} selections add ${this.formatSize(megabytes)} and leave about ${this.formatSize(projectedFree)} free.`

@@ -3,26 +3,25 @@ require "test_helper"
 class SetupControllerTest < ActionDispatch::IntegrationTest
   include ActiveJob::TestHelper
 
-  test "renders curated global presets and custom packages" do
+  test "renders only public-library, wikipedia, and religion download options" do
     get setup_url
     assert_response :success
     assert_select "title", text: "Setup — Ember Vault"
-    assert_no_match(/Initial Setup/i, response.body)
-    assert_select "h1", text: "Select maps by state."
+    assert_select "h1", text: "Choose your offline library."
     assert_no_match(/Choose your systems|Education Platform/, response.body)
     assert_select ".terms-document"
+    assert_select ".initial-setup-network-notice", text: /INTERNET REQUIRED FOR INITIAL SETUP/
     assert_select "input[name='terms_accepted']:not([checked])"
     assert_select "button[data-wizard-target='next'][disabled]"
     assert_select "input[value='wikipedia:top-mini']"
-    assert_select "input[name='knowledge_preset']", count: 3
-    assert_select "input[name='knowledge_preset'][value='preset:suggested'][checked]"
-    assert_select "input[value^='package:']", count: 23
-    assert_select "select[data-map-selection-target='state'] option", count: 52
-    assert_select "input[value='map-resource:arkansas'][data-size='400']"
-    assert_select "input[value^='map-resource:']", count: 50
-    assert_select ".religion-library", text: /OPTIONAL LIBRARY · NEVER INCLUDED IN TIERS/
+    assert_select "input[name='knowledge_preset']", count: 0
+    assert_select "input[value^='package:']", count: 0
+    assert_select "input[value^='map-resource:']", count: 0
+    assert_select ".religion-library", text: /OPTIONAL LIBRARY/
     assert_select "input[name='religion[]']", count: 6
     assert_select "input[name='religion[]'][checked]", count: 0
+    bible_size_mb = ContentCatalog.new.religion.first.fetch("size_bytes").fdiv(1.megabyte).to_s
+    assert_select "input[value='religion:religion-christianity-kjv-1769'][data-size='#{bible_size_mb}']"
     assert_select ".religion-options", text: /Christianity/
     assert_select ".religion-options", text: /Islam/
     assert_select ".religion-options", text: /Hindu traditions/
@@ -34,17 +33,11 @@ class SetupControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='theme'][value='dark'][checked]"
     assert_select "input[name='theme'][value='light']"
     assert_select "input[type='radio'][data-action*='wizard#toggleRadio']", minimum: 1
-    assert_select "input[value='preset:basic'][data-size='8']"
-    assert_select "input[value='preset:suggested'][data-size='37']"
-    assert_select "input[value='preset:comprehensive'][data-size='134']"
-    assert_select ".medical-safety-notice", text: /NATURAL DOES NOT MEAN SAFE/
-    assert_select ".evidence-label.historical", count: 2
-    assert_select "input[value='package:cdc-safe-water-emergency']"
     assert_select "label[data-action='pointerdown->wizard#rememberRadio']", minimum: 1
-    assert_select ".archive-storage-planner", count: 2
+    assert_select ".archive-storage-planner", count: 1
     assert_select "[data-wizard-storage-total-mb-value]"
-    assert_select "[data-wizard-target='storageSelectionBar']", count: 2
-    assert_select ".storage-selected", count: 2
+    assert_select "[data-wizard-target='storageSelectionBar']", count: 1
+    assert_select ".storage-selected", count: 1
     assert_select ".ai-setup-note", text: /queues its GGUF file/
   end
 
@@ -96,7 +89,7 @@ class SetupControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".terms-document", count: 0
     assert_select "input[name='terms_accepted']", count: 0
-    assert_select ".wizard-steps button", count: 5
+    assert_select ".wizard-steps button", count: 3
   end
 
   test "queues the selected tiny model during setup" do
@@ -114,8 +107,8 @@ class SetupControllerTest < ActionDispatch::IntegrationTest
     assert_equal Rails.root.join("storage/models/smollm2-135m.gguf"), model.inferred_destination_path
   end
 
-  test "queues only the individually selected state map" do
-    assert_enqueued_jobs 1, only: ContentDownloadJob do
+  test "ignores removed legacy map selections" do
+    assert_no_enqueued_jobs only: ContentDownloadJob do
       post setup_url, params: {
         terms_accepted: "1",
         capabilities: [ "information" ], wikipedia: "wikipedia:none", packages: [ "map-resource:arkansas" ], tiers: {},
@@ -123,11 +116,8 @@ class SetupControllerTest < ActionDispatch::IntegrationTest
       }
     end
 
-    map = ContentDownload.find_by!(resource_id: "arkansas")
-    assert_equal "map", map.kind
-    assert_equal 400.megabytes, map.expected_bytes
-    assert_equal [ "map-resource:arkansas", "wikipedia:none" ], SetupConfiguration.last.selected_resources
-    assert_nil ContentDownload.find_by(resource_id: "texas")
+    assert_not ContentDownload.exists?(resource_id: "arkansas")
+    assert_equal [ "wikipedia:none" ], SetupConfiguration.last.selected_resources
   end
 
   test "queues selected religious texts without adding unselected traditions" do
@@ -146,8 +136,8 @@ class SetupControllerTest < ActionDispatch::IntegrationTest
     assert_equal 2, SetupConfiguration.last.selected_resources.grep(/^religion:/).length
   end
 
-  test "queues an inherited curated preset without duplicate resources" do
-    assert_enqueued_jobs 11, only: ContentDownloadJob do
+  test "ignores removed legacy presets and packages" do
+    assert_no_enqueued_jobs only: ContentDownloadJob do
       post setup_url, params: {
         terms_accepted: "1",
         capabilities: [ "information" ], knowledge_preset: "preset:suggested",
@@ -156,9 +146,8 @@ class SetupControllerTest < ActionDispatch::IntegrationTest
       }
     end
 
-    assert_equal 11, ContentDownload.where(kind: "document").count
-    assert_equal 1, ContentDownload.where(resource_id: "cdc-safe-water-emergency").count
-    assert_equal "preset:suggested", SetupConfiguration.last.selected_resources.find { |key| key.start_with?("preset:") }
+    assert_not ContentDownload.exists?(resource_id: "cdc-safe-water-emergency")
+    assert_equal [ "wikipedia:none" ], SetupConfiguration.last.selected_resources
   end
 
   test "refuses to start a selection larger than available storage" do
@@ -171,8 +160,8 @@ class SetupControllerTest < ActionDispatch::IntegrationTest
       assert_no_difference([ "SetupConfiguration.count", "ContentDownload.count" ]) do
         post setup_url, params: {
           terms_accepted: "1",
-          capabilities: [ "information" ], knowledge_preset: "preset:basic", packages: [],
-          wikipedia: "wikipedia:none", religion: [], ai_profile: "disabled", theme: "dark"
+          capabilities: [ "information" ], packages: [],
+          wikipedia: "wikipedia:top-mini", religion: [], ai_profile: "disabled", theme: "dark"
         }
       end
     end

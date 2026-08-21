@@ -43,12 +43,16 @@ class SetupController < ApplicationController
     end
 
     catalog = ContentCatalog.new
-    selected_keys = Array(params[:packages]).compact_blank + [ params[:knowledge_preset] ].compact_blank +
-      Array(params[:religion]).compact_blank + [ params[:wikipedia] ].compact_blank
+    selected_knowledge_ids = Array(params[:knowledge_packs]).compact_blank
+    selected_keys = Array(params[:religion]).compact_blank + [ params[:wikipedia] ].compact_blank
     resources = catalog.resolve(selected_keys)
+    knowledge_result = RemoteKnowledgeCatalog.new.fetch
+    knowledge_resources = RemoteKnowledgeCatalog.new.packages(result: knowledge_result)
+      .select { |pack| selected_knowledge_ids.include?(pack["id"]) }
     ai_profile = AI_PROFILES.key?(params[:ai_profile]) ? params[:ai_profile] : "disabled"
     resources << AI_MODEL_RESOURCES.fetch(ai_profile) if AI_MODEL_RESOURCES.key?(ai_profile)
-    required_bytes = resources.sum { |resource| resource.fetch("size_bytes", resource.fetch("size_mb", 0).to_i.megabytes).to_i }
+    required_bytes = resources.sum { |resource| resource.fetch("size_bytes", resource.fetch("size_mb", 0).to_i.megabytes).to_i } +
+      knowledge_resources.sum { |pack| pack.fetch("download_size", 0).to_i }
     available_bytes = StorageMetrics.new.call.fetch(:available)
     if available_bytes.positive? && required_bytes > available_bytes
       return redirect_to(setup_path, alert: "Selected downloads need about #{helpers.number_to_human_size(required_bytes)}, " \
@@ -57,10 +61,12 @@ class SetupController < ApplicationController
     theme = SetupConfiguration::THEMES.include?(params[:theme]) ? params[:theme] : "dark"
     capabilities = [ "information" ]
     capabilities << "ai" unless ai_profile == "disabled"
-    projected_size_mb = resources.sum { |resource| resource.fetch("size_mb", 0).to_i }
+    projected_size_mb = resources.sum { |resource| resource.fetch("size_mb", 0).to_i } +
+      knowledge_resources.sum { |pack| pack.fetch("download_size", 0).to_f / 1.megabyte }
 
     TermsAcceptance.accept_current!(terms)
-    configuration = SetupConfiguration.create!(capabilities:, selected_resources: selected_keys,
+    configuration = SetupConfiguration.create!(capabilities:,
+      selected_resources: selected_keys + selected_knowledge_ids.map { |id| "knowledge-pack:#{id}" },
       ai_profile:, theme:, projected_size_mb:, completed_at: Time.current)
     cookies.permanent[:theme] = { value: theme, same_site: :lax }
     resources.each do |resource|
@@ -76,7 +82,6 @@ class SetupController < ApplicationController
       download.save!
       ContentDownloadJob.perform_later(download) if needs_enqueue
     end
-    knowledge_result = RemoteKnowledgeCatalog.new.fetch
     KnowledgePackQueue.new(result: knowledge_result).call(params[:knowledge_packs]) if knowledge_result.online
     redirect_to setup_complete_path(configuration_id: configuration.id)
   end

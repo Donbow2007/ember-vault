@@ -3,6 +3,7 @@
   <% if alert %><p class="flash alert setup-flash"><%= alert %></p><% end %>
   <% wizard_labels = (@terms_required ? [ "Terms" ] : []) + %w[Library AI Review] %>
   <header class="wizard-header"><%= link_to "EMBER VAULT", root_path, class: "wizard-logo" %><div class="wizard-steps"><% wizard_labels.each_with_index do |label, index| %><button type="button" data-wizard-target="indicator" data-action="wizard#go" data-step="<%= index %>" class="<%= "active" if index.zero? %>"><b><%= format("%02d", index + 1) %></b><span><%= label %></span></button><% end %></div><span>EV // CONFIG</span></header>
+  <% if @terms_required %><div class="warning-panel initial-setup-network-notice"><b>INTERNET REQUIRED FOR INITIAL SETUP</b><p>Connect this device to the internet to load the public catalog and download your selected content. After downloads and indexing finish, installed knowledge remains available offline.</p></div><% end %>
 
   <%= form_with url: setup_path, method: :post, class: "wizard-form", data: { wizard_target: "form" } do %>
     <% if @terms_required %>
@@ -53,7 +54,7 @@
 
         <article class="catalog-category religion-library">
           <div><small>OPTIONAL LIBRARY</small><h2>Religion &amp; Spiritual Texts</h2><p>Individually selected historic editions presented neutrally. Nothing in this section is installed automatically.</p></div>
-          <div class="religion-options"><% @catalog.religion.group_by { |item| item.fetch("tradition") }.each do |tradition, items| %><section><h3><%= tradition %></h3><% items.each do |item| %><label><%= check_box_tag "religion[]", "religion:#{item.fetch("id")}", false, data: { size: item.fetch("size_mb"), action: "wizard#update" } %><span class="choice-check"></span><div><b><%= item.fetch("work") %></b><p><%= item.fetch("translation") %></p><small><%= item.fetch("language") %> · <%= item.fetch("license") %> · <%= number_to_human_size(item.fetch("size_bytes")) %></small></div></label><% end %></section><% end %></div>
+          <div class="religion-options"><% @catalog.religion.group_by { |item| item.fetch("tradition") }.each do |tradition, items| %><section><h3><%= tradition %></h3><% items.each do |item| %><label><%= check_box_tag "religion[]", "religion:#{item.fetch("id")}", false, data: { size: item.fetch("size_bytes").fdiv(1.megabyte), action: "wizard#update" } %><span class="choice-check"></span><div><b><%= item.fetch("work") %></b><p><%= item.fetch("translation") %></p><small><%= item.fetch("language") %> · <%= item.fetch("license") %> · <%= number_to_human_size(item.fetch("size_bytes")) %></small></div></label><% end %></section><% end %></div>
         </article>
       </div>
     </section>
