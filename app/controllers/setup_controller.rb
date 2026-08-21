@@ -33,6 +33,7 @@ class SetupController < ApplicationController
     @installed_ai_profiles = LocalAiRuntime.downloaded_profiles.to_set
     @selected_ai_profile = SetupConfiguration.order(created_at: :desc).pick(:ai_profile)
     @selected_ai_profile = "source-assistant" unless @selected_ai_profile.in?(AI_PROFILES.keys)
+    load_knowledge_packs
   end
 
   def create
@@ -54,7 +55,7 @@ class SetupController < ApplicationController
         "but only #{helpers.number_to_human_size(available_bytes)} is available. Reduce the selection or free storage first.")
     end
     theme = SetupConfiguration::THEMES.include?(params[:theme]) ? params[:theme] : "dark"
-    capabilities = Array(params[:capabilities]).compact_blank & %w[information education]
+    capabilities = [ "information" ]
     capabilities << "ai" unless ai_profile == "disabled"
     projected_size_mb = resources.sum { |resource| resource.fetch("size_mb", 0).to_i }
 
@@ -75,6 +76,8 @@ class SetupController < ApplicationController
       download.save!
       ContentDownloadJob.perform_later(download) if needs_enqueue
     end
+    knowledge_result = RemoteKnowledgeCatalog.new.fetch
+    KnowledgePackQueue.new(result: knowledge_result).call(params[:knowledge_packs]) if knowledge_result.online
     redirect_to setup_complete_path(configuration_id: configuration.id)
   end
 
@@ -87,5 +90,11 @@ class SetupController < ApplicationController
 
   def disk_usage
     StorageMetrics.new.call
+  end
+
+  def load_knowledge_packs
+    @knowledge_catalog_result = RemoteKnowledgeCatalog.new.fetch
+    @knowledge_categories = @knowledge_catalog_result.manifest.fetch("categories", [])
+    @knowledge_downloads = ContentDownload.where.not(package_id: nil).index_by(&:package_id)
   end
 end

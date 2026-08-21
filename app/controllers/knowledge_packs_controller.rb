@@ -8,12 +8,7 @@ class KnowledgePacksController < ApplicationController
   def install
     result = RemoteKnowledgeCatalog.new.fetch
     return redirect_to(knowledge_packs_path, alert: "Offline — downloads are unavailable.") unless result.online
-    selected = Array(params[:packages]); catalog = RemoteKnowledgeCatalog.new
-    catalog.packages(result:).select { |pack| selected.include?(pack["id"]) }.each do |pack|
-      download = ContentDownload.find_or_initialize_by(package_id: pack.fetch("id"))
-      download.assign_attributes(resource_id: "knowledge-pack:#{pack.fetch('id')}", title: pack.fetch("name"), source_url: pack.fetch("download_url"), kind: "knowledge-pack", expected_bytes: pack.fetch("download_size", 0), package_version: pack.fetch("version"), content_hash: pack.fetch("content_hash"), status: "queued", downloaded_bytes: 0)
-      download.save!; ContentDownloadJob.perform_later(download)
-    end
+    KnowledgePackQueue.new(result:).call(params[:packages])
     redirect_to knowledge_packs_path, notice: "Selected knowledge packs are queued."
   end
   private

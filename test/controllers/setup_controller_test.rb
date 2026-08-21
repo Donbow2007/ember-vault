@@ -8,7 +8,8 @@ class SetupControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "title", text: "Setup — Ember Vault"
     assert_no_match(/Initial Setup/i, response.body)
-    assert_select "h1", text: "Choose your systems."
+    assert_select "h1", text: "Select maps by state."
+    assert_no_match(/Choose your systems|Education Platform/, response.body)
     assert_select ".terms-document"
     assert_select "input[name='terms_accepted']:not([checked])"
     assert_select "button[data-wizard-target='next'][disabled]"

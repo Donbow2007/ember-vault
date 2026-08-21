@@ -1,11 +1,11 @@
 class KnowledgePackIndexJob < ApplicationJob
   queue_as :default
 
-  def perform(download)
-    download.documents.order(:id).find_each do |document|
-      DocumentIndexer.new(document, rebuild_search_index: false).call
-      raise document.error_message if document.reload.status == "failed"
-    end
-    Passage.rebuild_search_index
+  def perform(download, backup_path = "")
+    download.update!(status: "indexing", error_message: nil)
+    KnowledgePackageInstaller.new(download).finalize(backup_path:)
+  rescue StandardError => error
+    download.update(status: "failed", error_message: error.message.to_s.first(500))
+    raise
   end
 end

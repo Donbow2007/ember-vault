@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_08_21_140000) do
+ActiveRecord::Schema[8.0].define(version: 2026_08_21_150000) do
   create_table "assistant_responses", force: :cascade do |t|
     t.text "question", null: false
     t.text "answer"
@@ -41,6 +41,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_21_140000) do
     t.integer "package_version"
     t.string "content_hash"
     t.string "package_id"
+    t.integer "installed_package_version"
+    t.string "installed_content_hash"
     t.index ["package_id"], name: "index_content_downloads_on_package_id", unique: true, where: "package_id IS NOT NULL"
   end
 
@@ -58,6 +60,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_21_140000) do
     t.integer "content_download_id"
     t.integer "deletion_total", default: 0, null: false
     t.integer "deletion_remaining", default: 0, null: false
+    t.string "external_id"
+    t.string "content_hash"
+    t.index ["content_download_id", "external_id"], name: "index_documents_on_download_and_external_id", unique: true, where: "external_id IS NOT NULL"
     t.index ["content_download_id"], name: "index_documents_on_content_download_id"
     t.index ["created_at"], name: "index_documents_on_created_at"
     t.index ["status"], name: "index_documents_on_status"

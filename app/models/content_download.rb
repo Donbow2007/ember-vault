@@ -1,7 +1,7 @@
 require "uri"
 
 class ContentDownload < ApplicationRecord
-  STATUSES = %w[queued downloading cancel_requested cancelled delete_requested deleting deletion_failed complete failed].freeze
+  STATUSES = %w[queued downloading installing indexing installed cancel_requested cancelled delete_requested deleting deletion_failed complete failed].freeze
   scope :failed, -> { where(status: "failed") }
   has_many :documents, dependent: :destroy
   has_many :map_features, dependent: :destroy
@@ -11,18 +11,18 @@ class ContentDownload < ApplicationRecord
   validates :status, inclusion: { in: STATUSES }
 
   def progress
-    return 100 if status == "complete"
+    return 100 if status.in?(%w[complete installing indexing installed])
     return 0 if expected_bytes.to_i.zero?
 
     [ (downloaded_bytes.to_f / expected_bytes.to_i * 100).round, 100 ].min
   end
 
   def display_total_bytes
-    status == "complete" ? downloaded_bytes : expected_bytes
+    status.in?(%w[complete installing indexing installed]) ? downloaded_bytes : expected_bytes
   end
 
   def active?
-    status.in?(%w[queued downloading cancel_requested delete_requested deleting])
+    status.in?(%w[queued downloading installing indexing cancel_requested delete_requested deleting])
   end
 
   def deletion_progress
@@ -32,7 +32,7 @@ class ContentDownload < ApplicationRecord
   end
 
   def file_available?
-    return false unless status == "complete" && destination_path.present?
+    return false unless status.in?(%w[complete installing indexing installed]) && destination_path.present?
 
     EmberVault::Paths.resolve(destination_path).file?
   rescue ArgumentError

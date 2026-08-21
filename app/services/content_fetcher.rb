@@ -18,6 +18,7 @@ class ContentFetcher
     www.ncbi.nlm.nih.gov huggingface.co www.gutenberg.org gutenberg.org www.ready.gov stacks.cdc.gov www.osha.gov
     www.fema.gov www.weather.gov www.aphis.usda.gov armypubs.army.mil ods.od.nih.gov research.fs.usda.gov].freeze
   MAX_REDIRECTS = 5
+  MAX_KNOWLEDGE_PACKAGE_BYTES = 256.megabytes
   BLOCKED_NETWORKS = %w[
     0.0.0.0/8 10.0.0.0/8 100.64.0.0/10 127.0.0.0/8 169.254.0.0/16 172.16.0.0/12
     192.0.0.0/24 192.0.2.0/24 192.168.0.0/16 198.18.0.0/15 198.51.100.0/24
@@ -63,15 +64,18 @@ class ContentFetcher
         end
         raise "Download failed with HTTP #{response.code}" unless response.is_a?(Net::HTTPSuccess)
 
+        limit = @download.kind == "knowledge-pack" ? MAX_KNOWLEDGE_PACKAGE_BYTES : nil
         bytes = 0
         File.open(temporary_path, "wb") do |file|
           response.read_body do |chunk|
             handle_control_request! if (bytes % 1.megabyte) < chunk.bytesize
             file.write(chunk)
             bytes += chunk.bytesize
+            raise "Knowledge package exceeds the maximum allowed size" if limit && bytes > limit
             @download.update_columns(downloaded_bytes: bytes, updated_at: Time.current) if (bytes % 1.megabyte) < chunk.bytesize
           end
         end
+        verify_size!(bytes)
         verify_checksum!(temporary_path)
         final_path = destination_path
         File.rename(temporary_path, final_path)
@@ -99,6 +103,9 @@ class ContentFetcher
     raise "Downloads require HTTPS" unless uri.is_a?(URI::HTTPS) && uri.port == 443
     configured_manifest_host = URI(ENV.fetch("EMBER_VAULT_KNOWLEDGE_MANIFEST_URL", "")).host rescue nil
     raise "Unapproved catalog host" if initial && !ALLOWED_HOSTS.include?(uri.host) && uri.host != configured_manifest_host
+    if @download.kind == "knowledge-pack" && !ALLOWED_HOSTS.include?(uri.host) && uri.host != configured_manifest_host
+      raise "Unapproved knowledge package redirect host"
+    end
     raise "Unapproved redirect host" if uri.host.blank? || uri.host == "localhost" || uri.host.end_with?(".local")
 
     addresses = @resolver.call(uri.host)
@@ -111,11 +118,20 @@ class ContentFetcher
   end
 
   def verify_checksum!(path)
-    expected = ContentCatalog.new.resource(@download.resource_id)&.fetch("sha256", nil)
+    expected = if @download.kind == "knowledge-pack"
+      @download.content_hash
+    else
+      ContentCatalog.new.resource(@download.resource_id)&.fetch("sha256", nil)
+    end
     return if expected.blank?
 
     actual = Digest::SHA256.file(path).hexdigest
     raise "Download checksum did not match the curated catalog" unless ActiveSupport::SecurityUtils.secure_compare(actual, expected)
+  end
+
+  def verify_size!(bytes)
+    return unless @download.kind == "knowledge-pack" && @download.expected_bytes.to_i.positive?
+    raise "Knowledge package size did not match the catalog" unless bytes == @download.expected_bytes.to_i
   end
 
   def destination_path

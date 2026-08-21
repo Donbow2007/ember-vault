@@ -1,7 +1,7 @@
 <% content_for :title, "Setup — Ember Vault" %>
 <div class="wizard-shell" data-controller="wizard" data-wizard-storage-total-mb-value="<%= @disk_usage.fetch(:total).to_f / 1.megabyte %>" data-wizard-storage-used-mb-value="<%= @disk_usage.fetch(:used).to_f / 1.megabyte %>" data-wizard-storage-free-mb-value="<%= @disk_usage.fetch(:available).to_f / 1.megabyte %>">
   <% if alert %><p class="flash alert setup-flash"><%= alert %></p><% end %>
-  <% wizard_labels = (@terms_required ? [ "Terms" ] : []) + %w[Capabilities Maps Library AI Review] %>
+  <% wizard_labels = (@terms_required ? [ "Terms" ] : []) + %w[Library AI Review] %>
   <header class="wizard-header"><%= link_to "EMBER VAULT", root_path, class: "wizard-logo" %><div class="wizard-steps"><% wizard_labels.each_with_index do |label, index| %><button type="button" data-wizard-target="indicator" data-action="wizard#go" data-step="<%= index %>" class="<%= "active" if index.zero? %>"><b><%= format("%02d", index + 1) %></b><span><%= label %></span></button><% end %></div><span>EV // CONFIG</span></header>
 
   <%= form_with url: setup_path, method: :post, class: "wizard-form", data: { wizard_target: "form" } do %>
@@ -13,61 +13,68 @@
         <div class="terms-acceptance"><label><%= check_box_tag :terms_accepted, "1", false, data: { wizard_target: "termsAcceptance", action: "wizard#termsChanged" } %><span><%= @terms.acceptance_label %></span></label><p class="terms-required-message">Required before continuing. No name, account, or personal information is recorded.</p></div>
       </section>
     <% end %>
+
     <section class="wizard-step active" data-wizard-target="step">
-      <div class="wizard-intro"><p class="section-index">STEP 01 // CORE CAPABILITIES</p><h1>Choose your systems.</h1><p>Select the local services this node should prepare. Content selections come next.</p></div>
-      <div class="choice-grid capabilities">
-        <% [{ id: "information", name: "Information Library", tech: "KIWIX", copy: "Offline Wikipedia, medical references, field manuals, and books.", checked: true }, { id: "education", name: "Education Platform", tech: "KOLIBRI", copy: "Interactive courses, exercises, and learner progress tracking." }].each do |item| %>
-          <label class="choice-card"><%= check_box_tag "capabilities[]", item[:id], item[:checked], data: { action: "wizard#update" } %><span class="choice-check"></span><small><%= item[:tech] %></small><h2><%= item[:name] %></h2><p><%= item[:copy] %></p></label>
+      <div class="wizard-intro"><p class="section-index">STEP 01 // OFFLINE LIBRARY</p><h1>Choose your offline library.</h1><p>Knowledge packs are loaded from Ember Vault's public package repository. Wikipedia and individually selected religious texts remain available as separate libraries.</p></div>
+      <%= render "storage_planner" %>
+
+      <% unless @knowledge_catalog_result.online %>
+        <div class="warning-panel"><b>PUBLIC CATALOG UNAVAILABLE</b><p><%= @knowledge_catalog_result.error %>. Setup can continue, and installed knowledge remains available offline.</p></div>
+      <% end %>
+
+      <div class="catalog-sections">
+        <% @knowledge_categories.each do |category| %>
+          <% packs = category.fetch("packages", []).select { |pack| @knowledge_catalog_result.online || @knowledge_downloads.key?(pack["id"]) } %>
+          <% next if packs.empty? %>
+          <article class="catalog-category">
+            <div><small>EMBER VAULT PUBLIC LIBRARY</small><h2><%= category["name"] %></h2></div>
+            <div class="package-options">
+              <% packs.each do |pack| %>
+                <% download = @knowledge_downloads[pack["id"]] %>
+                <% update = download&.installed_package_version && (pack["version"] != download.installed_package_version || pack["content_hash"] != download.installed_content_hash) %>
+                <label>
+                  <%= check_box_tag "knowledge_packs[]", pack["id"], download&.active?, disabled: !@knowledge_catalog_result.online, data: { size: pack.fetch("download_size", 0).to_f / 1.megabyte, action: "wizard#update" } %>
+                  <span class="choice-check"></span>
+                  <div><b><%= pack["name"] %></b><p><%= pack["description"] %></p><small><%= number_to_human_size(pack.fetch("download_size", 0)) %> · <%= update ? "UPDATE AVAILABLE" : (download&.status || "AVAILABLE").upcase %></small></div>
+                </label>
+              <% end %>
+            </div>
+          </article>
         <% end %>
-      </div>
-      <div class="appearance-setting">
-        <div><p class="section-index">APPEARANCE // DISPLAY MODE</p><h2>Choose interface theme.</h2><p>Both themes use only local artwork and assets.</p></div>
-        <div class="theme-options">
-          <label><%= radio_button_tag :theme, "dark", @theme == "dark" %><span><i class="theme-preview dark-preview"></i><b>DARK MODE</b><small>LOW-LIGHT COMMAND INTERFACE</small></span></label>
-          <label><%= radio_button_tag :theme, "light", @theme == "light" %><span><i class="theme-preview light-preview"></i><b>LIGHT MODE</b><small>HIGH-VISIBILITY DAYLIGHT INTERFACE</small></span></label>
-        </div>
+
+        <% if @knowledge_categories.empty? && @knowledge_downloads.empty? %>
+          <p class="catalog-pending">The public package repository has not published its first manifest yet. Return to Setup or Packs later to refresh it.</p>
+        <% end %>
+
+        <article class="catalog-category wikipedia">
+          <div><small>REFERENCE</small><h2>Wikipedia</h2><p>Choose an English-language offline edition.</p></div>
+          <div class="tier-options"><% @catalog.wikipedia.each do |option| %><label data-action="pointerdown->wizard#rememberRadio"><%= radio_button_tag "wikipedia", "wikipedia:#{option.fetch("id")}", option.fetch("id") == "none", data: { size: option.fetch("size_mb"), action: "keydown.space->wizard#rememberRadio click->wizard#toggleRadio" } %><span><b><%= option.fetch("name") %></b><small><%= number_to_human_size(option.fetch("size_mb").megabytes) %></small></span></label><% end %></div>
+        </article>
+
+        <article class="catalog-category religion-library">
+          <div><small>OPTIONAL LIBRARY</small><h2>Religion &amp; Spiritual Texts</h2><p>Individually selected historic editions presented neutrally. Nothing in this section is installed automatically.</p></div>
+          <div class="religion-options"><% @catalog.religion.group_by { |item| item.fetch("tradition") }.each do |tradition, items| %><section><h3><%= tradition %></h3><% items.each do |item| %><label><%= check_box_tag "religion[]", "religion:#{item.fetch("id")}", false, data: { size: item.fetch("size_mb"), action: "wizard#update" } %><span class="choice-check"></span><div><b><%= item.fetch("work") %></b><p><%= item.fetch("translation") %></p><small><%= item.fetch("language") %> · <%= item.fetch("license") %> · <%= number_to_human_size(item.fetch("size_bytes")) %></small></div></label><% end %></section><% end %></div>
+        </article>
       </div>
     </section>
 
     <section class="wizard-step" data-wizard-target="step">
-      <div class="wizard-intro"><p class="section-index">STEP 02 // OFFLINE MAPS</p><h1>Select maps by state.</h1><p>Choose only the statewide Project NOMAD PMTiles packages you need. County and regional levels can be added beneath each state as catalog metadata becomes available.</p></div>
-      <%= render "storage_planner" %>
-      <div class="map-selector" data-controller="map-selection">
-        <div class="map-selector-controls"><select data-map-selection-target="state" data-action="map-selection#filter" aria-label="Browse maps by state"><option value="">ALL STATES</option><% @catalog.map_jurisdictions.each do |place| %><option value="<%= place.fetch('code') %>" <%= "disabled" unless place.fetch('available') %>><%= place.fetch("name") %><%= " — NOT YET AVAILABLE" unless place.fetch("available") %></option><% end %></select><input type="search" data-map-selection-target="query" data-action="input->map-selection#filter" placeholder="SEARCH STATE, REGION, OR MAP TYPE" aria-label="Search available maps"></div>
-        <p class="map-selection-empty" data-map-selection-target="empty" hidden>NO AVAILABLE MAP PACKAGES MATCH THIS LOCATION.</p>
-        <div class="choice-grid maps"><% @catalog.map_resources.each do |resource| %><label class="choice-card compact" data-map-selection-target="card" data-state="<%= resource.fetch('admin1_code') %>" data-search="<%= [resource['title'], resource['admin1_name'], resource['region'], resource['map_type'], resource['description']].join(' ').downcase %>"><%= check_box_tag "packages[]", "map-resource:#{resource.fetch('id')}", false, data: { size: resource.fetch('size_mb', 0), action: "wizard#update" } %><span class="choice-check"></span><small><%= number_to_human_size(resource.fetch('size_mb', 0).megabytes) %> · <%= resource.fetch('map_type').upcase %></small><h2><%= resource.fetch("admin1_name") %></h2><p>STATEWIDE · <%= resource.fetch("region") %></p></label><% end %></div>
-      </div>
-    </section>
-
-    <section class="wizard-step" data-wizard-target="step">
-      <div class="wizard-intro"><p class="section-index">STEP 03 // CURATED KNOWLEDGE</p><h1>Build the trusted archive.</h1><p>Start with one global preparedness preset, then add or remove optional packages. Every enabled source has publisher, rights, version, size, and integrity metadata.</p></div>
-      <%= render "storage_planner" %>
-      <div class="knowledge-presets"><% @catalog.presets.each do |preset| %><% key = "preset:#{preset.fetch('id')}" %><% resources = @catalog.resolve(key) %><label data-action="pointerdown->wizard#rememberRadio"><%= radio_button_tag :knowledge_preset, key, preset.fetch("recommended", false), data: { size: @catalog.installation_size_mb(key), package_ids: resources.map { |item| item.fetch("id") }.join(","), package_sizes: resources.map { |item| item.fetch("size_mb") }.join(","), action: "keydown.space->wizard#rememberRadio click->wizard#toggleRadio" } %><span><small><%= "RECOMMENDED · " if preset.fetch("recommended", false) %><%= resources.length %> VERIFIED PUBLICATIONS</small><h2><%= preset.fetch("name") %></h2><p><%= preset.fetch("description") %></p><b><%= number_to_human_size(@catalog.download_size_bytes(key)) %> DOWNLOAD · ~<%= number_to_human_size(@catalog.installed_size_mb(key).megabytes) %> INDEXED</b></span></label><% end %></div>
-      <div class="catalog-sections"><% @catalog.categories.each do |category| %><% category_packages = @catalog.packages_for(category.fetch("slug")) %><article class="catalog-category <%= "medical-safety-category" if category.fetch("slug") == "herbal-medicine" %>"><div><small><%= category_packages.any? ? "VERIFIED SOURCES" : "RESEARCH QUEUE" %></small><h2><%= category.fetch("name") %></h2><p><%= category.fetch("description") %></p><% if category.fetch("slug") == "herbal-medicine" %><p class="medical-safety-notice"><b>NATURAL DOES NOT MEAN SAFE.</b> Historical use is not proof of effectiveness. Plant identification errors, toxicity, pregnancy risks, and medication interactions can cause serious harm. Use professional or emergency care when needed.</p><% end %></div><div class="package-options"><% if category_packages.any? %><% category_packages.each do |item| %><label><%= check_box_tag "packages[]", "package:#{item.fetch('id')}", false, data: { size: item.fetch("size_mb"), package_ids: item.fetch("id"), package_sizes: item.fetch("size_mb"), action: "wizard#update" } %><span class="choice-check"></span><div><b><%= item.fetch("title") %></b><p><%= item.fetch("organization") %> · <%= item.fetch("publication_date") %></p><% if item["source_role"] %><em class="evidence-label <%= "historical" if item["historical"] %>"><%= item.fetch("source_role").tr("_", " ").upcase %></em><p><%= item.fetch("evidence_scope") %></p><% end %><small><%= item.fetch("license") %> · <%= number_to_human_size(item.fetch("size_bytes")) %> download · ~<%= number_to_human_size(item.fetch("installed_size_mb").megabytes) %> indexed</small></div></label><% end %><% else %><p class="catalog-pending">No package is enabled until a current authoritative edition and its redistribution terms pass review.</p><% end %></div></article><% end %>
-        <article class="catalog-category wikipedia"><div><small>REFERENCE</small><h2>Wikipedia</h2><p>Choose an English-language offline edition.</p></div><div class="tier-options"><% @catalog.wikipedia.each do |option| %><label data-action="pointerdown->wizard#rememberRadio"><%= radio_button_tag "wikipedia", "wikipedia:#{option.fetch("id")}", option.fetch("id") == "none", data: { size: option.fetch("size_mb"), action: "keydown.space->wizard#rememberRadio click->wizard#toggleRadio" } %><span><b><%= option.fetch("name") %></b><small><%= number_to_human_size(option.fetch("size_mb").megabytes) %></small></span></label><% end %></div></article>
-        <article class="catalog-category religion-library"><div><small>OPTIONAL LIBRARY · NEVER INCLUDED IN TIERS</small><h2>Religion &amp; Spiritual Texts</h2><p>Individually selected historic editions presented neutrally. Select none, one, or many; no religious text is installed automatically.</p></div><div class="religion-options"><% @catalog.religion.group_by { |item| item.fetch("tradition") }.each do |tradition, items| %><section><h3><%= tradition %></h3><% items.each do |item| %><label><%= check_box_tag "religion[]", "religion:#{item.fetch("id")}", false, data: { size: item.fetch("size_mb"), action: "wizard#update" } %><span class="choice-check"></span><div><b><%= item.fetch("work") %></b><p><%= item.fetch("translation") %></p><small><%= item.fetch("language") %> · <%= item.fetch("license") %> · <%= number_to_human_size(item.fetch("size_bytes")) %></small></div></label><% end %></section><% end %></div></article>
-      </div>
-    </section>
-
-    <section class="wizard-step" data-wizard-target="step">
-      <div class="wizard-intro"><p class="section-index">STEP 04 // OFFLINE AI</p><h1>Select local intelligence.</h1><p>Designed for the 1 GB Raspberry Pi 3 B. The cited source assistant is fastest and most reliable; the tiny model is optional and never replaces source citations.</p></div>
+      <div class="wizard-intro"><p class="section-index">STEP 02 // OFFLINE AI</p><h1>Select local intelligence.</h1><p>Designed for the 1 GB Raspberry Pi 3 B. The cited source assistant is fastest and most reliable; the tiny model is optional and never replaces source citations.</p></div>
       <div class="ai-profile selectable">
         <% @ai_profiles.each do |id, profile| %>
           <% installed = @installed_ai_profiles.include?(id) %>
           <% status = if id == "disabled" then "SEARCH ONLY" elsif id == "source-assistant" then "BUILT IN · NO DOWNLOAD" elsif installed then "DOWNLOADED · READY" elsif id == "smollm2-135m" then "DOWNLOAD · LOWEST MEMORY" else "DOWNLOAD · EXPERIMENTAL" end %>
-          <label data-action="pointerdown->wizard#rememberRadio">
-            <%= radio_button_tag :ai_profile, id, id == @selected_ai_profile, data: { size: installed ? 0 : profile.fetch(:size_mb), action: "keydown.space->wizard#rememberRadio click->wizard#toggleRadio" } %>
-            <span class="ai-select"><i></i><small><%= status %></small><h2><%= profile.fetch(:name) %></h2><p><%= profile.fetch(:description) %></p><dl><div><dt>MODEL</dt><dd><%= profile.fetch(:model) || "NONE" %></dd></div><div><dt>SETUP DOWNLOAD</dt><dd><%= installed ? "ALREADY ON DEVICE" : number_to_human_size(profile.fetch(:size_mb).megabytes) %></dd></div><div><dt>MIN. RAM</dt><dd><%= profile.fetch(:ram) %></dd></div></dl></span>
-          </label>
+          <label data-action="pointerdown->wizard#rememberRadio"><%= radio_button_tag :ai_profile, id, id == @selected_ai_profile, data: { size: installed ? 0 : profile.fetch(:size_mb), action: "keydown.space->wizard#rememberRadio click->wizard#toggleRadio" } %><span class="ai-select"><i></i><small><%= status %></small><h2><%= profile.fetch(:name) %></h2><p><%= profile.fetch(:description) %></p><dl><div><dt>MODEL</dt><dd><%= profile.fetch(:model) || "NONE" %></dd></div><div><dt>SETUP DOWNLOAD</dt><dd><%= installed ? "ALREADY ON DEVICE" : number_to_human_size(profile.fetch(:size_mb).megabytes) %></dd></div><div><dt>MIN. RAM</dt><dd><%= profile.fetch(:ram) %></dd></div></dl></span></label>
         <% end %>
       </div>
       <p class="ai-setup-note">Selecting a model that is not installed queues its GGUF file on the Transfers page. Selecting a downloaded model makes it active without downloading a duplicate.</p>
     </section>
 
     <section class="wizard-step review-step" data-wizard-target="step">
-      <div class="wizard-intro"><p class="section-index">STEP 05 // FINAL REVIEW</p><h1>Seal the loadout.</h1><p>Confirming will create download jobs for every selected catalog resource.</p></div>
+      <div class="wizard-intro"><p class="section-index">STEP 03 // FINAL REVIEW</p><h1>Seal the loadout.</h1><p>Confirming will create download jobs for every selected library resource.</p></div>
+      <div class="appearance-setting"><div><p class="section-index">APPEARANCE // DISPLAY MODE</p><h2>Choose interface theme.</h2><p>Both themes use only local artwork and assets.</p></div><div class="theme-options"><label><%= radio_button_tag :theme, "dark", @theme == "dark" %><span><i class="theme-preview dark-preview"></i><b>DARK MODE</b><small>LOW-LIGHT COMMAND INTERFACE</small></span></label><label><%= radio_button_tag :theme, "light", @theme == "light" %><span><i class="theme-preview light-preview"></i><b>LIGHT MODE</b><small>HIGH-VISIBILITY DAYLIGHT INTERFACE</small></span></label></div></div>
       <div class="storage-readout"><div><span>PROJECTED DOWNLOAD</span><strong data-wizard-target="total">0 MB</strong></div><div><span>AVAILABLE STORAGE</span><strong><%= number_to_human_size(@disk_free_mb.megabytes) %></strong></div><div class="storage-track"><i data-wizard-target="bar"></i></div><p data-wizard-target="summary">No content packages selected.</p></div>
-      <div class="warning-panel"><b>DOWNLOAD AUTHORIZATION</b><p>Some complete collections exceed 50 GB. Downloads use the public upstream URLs in the vendored catalog and may take considerable time. You can monitor them after setup.</p></div>
+      <div class="warning-panel"><b>DOWNLOAD AUTHORIZATION</b><p>Selected content downloads from its listed public source and may take considerable time. You can monitor transfers after setup.</p></div>
     </section>
 
     <footer class="wizard-controls"><button type="button" class="button button-ghost" data-action="wizard#back" data-wizard-target="back" disabled>BACK</button><div><span data-wizard-target="counter">01 / <%= format("%02d", wizard_labels.length) %></span><button type="button" class="button button-light" data-action="wizard#next" data-wizard-target="next" <%= "disabled" if @terms_required %>>CONTINUE</button><%= submit_tag "CONFIRM & QUEUE DOWNLOADS", class: "button button-light finish-button", data: { wizard_target: "finish" } %></div></footer>
