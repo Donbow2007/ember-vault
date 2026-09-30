@@ -154,7 +154,7 @@ module EmberVault
     end
 
     def ensure_directories
-      %w[archive_files content models maps backups tmp].each { |directory| FileUtils.mkdir_p(File.join(STORAGE_ROOT, directory)) }
+      %w[models maps database settings logs backups tmp].each { |directory| FileUtils.mkdir_p(File.join(STORAGE_ROOT, directory)) }
     end
 
     def ensure_local_ai_runtime
@@ -172,7 +172,7 @@ module EmberVault
       run!([ "cmake", "-S", source, "-B", File.join(source, "build"), "-DGGML_NATIVE=ON", "-DGGML_BUILD_TESTS=OFF", "-DGGML_BUILD_EXAMPLES=OFF", "-DLLAMA_BUILD_EXAMPLES=OFF", "-DLLAMA_BUILD_TOOLS=ON" ])
       run!([ "cmake", "--build", File.join(source, "build"), "--target", "llama-completion", "--parallel", "1" ])
     rescue StandardError => error
-      say "NOTE: local AI runtime setup failed (#{error.message}); cited source mode remains available."
+      say "NOTE: local AI runtime setup failed (#{error.message}); install a bundled llama.cpp runtime before using Ember AI."
     end
 
     def executable_on_path?(name)
@@ -258,7 +258,7 @@ module EmberVault
     end
 
     def bind_address
-      ENV.fetch("BIND_ADDRESS", "0.0.0.0")
+      ENV.fetch("BIND_ADDRESS", "127.0.0.1")
     end
 
     def display_host
