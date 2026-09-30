@@ -1,12 +1,26 @@
 <% content_for :title, "Models — Ember Vault" %>
-<main class="dashboard">
-  <div class="section-heading"><div><p class="section-index">MODELS // LOCAL AI</p><h1>Ember models</h1></div></div>
+<main class="dashboard models-page">
+  <div class="section-heading">
+    <div><p class="section-index">MODELS // LOCAL AI</p><h1>Ember models</h1></div>
+    <p class="section-note">One installed model is enough. Ember runs it locally and does not send questions to a cloud AI service.</p>
+  </div>
+  <% flash.each do |type, message| %><div class="flash <%= type %>"><%= message %></div><% end %>
   <div class="module-grid">
-    <% @models.each do |model| %>
-      <article class="module-card">
-        <div class="module-topline"><span>GGUF</span><b><%= @installed_ids.include?(model.id) ? "INSTALLED" : "NOT INSTALLED" %></b></div>
+    <% @models.each_with_index do |model, index| %>
+      <% installed = @installed_ids.include?(model.id) %>
+      <article class="module-card <%= "featured" if index.zero? %>">
+        <div class="module-topline"><span><%= index.zero? ? "RECOMMENDED" : "ALTERNATIVE" %></span><b><%= installed ? "INSTALLED" : "AVAILABLE" %></b></div>
         <h3><%= model.display_name %></h3>
-        <p><%= model.repository %></p>
+        <p><%= installed ? "Stored on this portable drive and available to Ember." : "Download this GGUF model onto the portable drive while you have internet access." %></p>
+        <div class="model-action">
+          <% if installed %>
+            <%= button_to "REMOVE", model_path(model.id), method: :delete, class: "button button-ghost" %>
+          <% elsif model.download_url.present? %>
+            <%= button_to "INSTALL", install_model_path(model.id), class: "button button-light" %>
+          <% else %>
+            <span>DOWNLOAD SOURCE NOT YET VERIFIED</span>
+          <% end %>
+        </div>
         <footer><span><%= model.status.to_s.upcase.tr("_", " ") %></span><span><%= model.license.to_s.upcase %></span></footer>
       </article>
     <% end %>
