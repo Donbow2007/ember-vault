@@ -1,5 +1,3 @@
-require "open3"
-
 class DashboardController < ApplicationController
   def index
     @ai_runtime = LocalAiRuntime.new
@@ -10,16 +8,25 @@ class DashboardController < ApplicationController
   private
 
   def disk_usage
-    root = ENV.fetch("EMBER_VAULT_DATA_DIR", Rails.root.join("storage").to_s)
-    output, status = Open3.capture2("df", "-Pk", root)
-    fields = output.lines.last.to_s.split
-    unless status.success? && fields.length >= 6
-      return { used: 0, available: 0, percent: 0 }
+    root = EmberVault::PortableStorage.root
+    available = if Gem.win_platform?
+      windows_available_bytes(root)
+    else
+      unix_available_bytes(root)
     end
+    { available:, percent: 0 }
+  rescue StandardError
+    { available: 0, percent: 0 }
+  end
 
-    used = fields[2].to_i.kilobytes
-    available = fields[3].to_i.kilobytes
-    total = used + available
-    { used:, available:, percent: total.positive? ? (used.to_f / total * 100).round : 0 }
+  def unix_available_bytes(root)
+    output = IO.popen([ "df", "-Pk", root.to_s ], &:read)
+    output.lines.last.to_s.split[3].to_i.kilobytes
+  end
+
+  def windows_available_bytes(root)
+    drive = root.to_s[0, 2]
+    output = IO.popen([ "powershell", "-NoProfile", "-Command", "(Get-PSDrive '#{drive[0]}').Free" ], &:read)
+    output.to_i
   end
 end
