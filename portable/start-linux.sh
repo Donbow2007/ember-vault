@@ -3,6 +3,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export EMBER_VAULT_DATA_DIR="${EMBER_VAULT_DATA_DIR:-$ROOT/storage}"
 export EMBER_VAULT_PORTABLE=1
+export EMBER_VAULT_BUNDLED_RUNTIME=1
 export GEM_HOME="$ROOT/vendor/bundle"
 export GEM_PATH="$GEM_HOME"
 export PATH="$ROOT/runtime/ruby/bin:$ROOT/runtime/node/bin:$ROOT/runtime/llama/bin:$PATH"
