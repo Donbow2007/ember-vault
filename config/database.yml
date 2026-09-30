@@ -35,12 +35,12 @@ test:
 production:
   primary:
     <<: *default
-    database: <%= File.join(ENV.fetch("EMBER_VAULT_DATA_DIR", Rails.root.join("storage").to_s), "production.sqlite3") %>
+    database: <%= File.join(ENV.fetch("EMBER_VAULT_DATA_DIR", Rails.root.join("storage").to_s), "database", "production.sqlite3") %>
   cache:
     <<: *default
-    database: <%= File.join(ENV.fetch("EMBER_VAULT_DATA_DIR", Rails.root.join("storage").to_s), "production_cache.sqlite3") %>
+    database: <%= File.join(ENV.fetch("EMBER_VAULT_DATA_DIR", Rails.root.join("storage").to_s), "database", "production_cache.sqlite3") %>
     migrations_paths: db/cache_migrate
   queue:
     <<: *default
-    database: <%= File.join(ENV.fetch("EMBER_VAULT_DATA_DIR", Rails.root.join("storage").to_s), "production_queue.sqlite3") %>
+    database: <%= File.join(ENV.fetch("EMBER_VAULT_DATA_DIR", Rails.root.join("storage").to_s), "database", "production_queue.sqlite3") %>
     migrations_paths: db/queue_migrate
