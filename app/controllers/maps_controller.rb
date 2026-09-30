@@ -42,7 +42,7 @@ class MapsController < ApplicationController
 
     file_size = File.size(path)
     first = match[1].to_i
-    last = match[2].present? ? [match[2].to_i, file_size - 1].min : file_size - 1
+    last = match[2].present? ? [ match[2].to_i, file_size - 1 ].min : file_size - 1
     return head :range_not_satisfiable if first >= file_size || last < first
 
     length = last - first + 1
