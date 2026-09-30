@@ -1,3 +1,4 @@
+require "etc"
 require "fileutils"
 require "net/http"
 require "open3"
