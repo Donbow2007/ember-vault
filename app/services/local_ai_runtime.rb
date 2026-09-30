@@ -47,7 +47,7 @@ class LocalAiRuntime
 
   def model_path
     configured = ENV["EMBER_VAULT_MODEL_PATH"].presence
-    Pathname.new(configured).expand_path if configured
+    return Pathname.new(configured).expand_path if configured
 
     filename = MODEL_FILES[profile]
     data_root = ENV["EMBER_VAULT_DATA_DIR"].presence || Rails.root.join("storage").to_s
