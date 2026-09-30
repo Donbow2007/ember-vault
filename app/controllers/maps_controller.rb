@@ -12,9 +12,7 @@ class MapsController < ApplicationController
   def archive
     pack = map_pack
     path = pack.archive_path
-    unless File.file?(path)
-      return head :not_found
-    end
+    return head :not_found unless File.file?(path)
 
     response.headers["Accept-Ranges"] = "bytes"
     response.headers["Cache-Control"] = "private, max-age=3600"
