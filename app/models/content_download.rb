@@ -48,9 +48,9 @@ class ContentDownload < ApplicationRecord
 
   def remove_content_files
     paths = []
-    paths << Rails.root.join(destination_path).cleanpath if destination_path.present?
+    paths << portable_path(destination_path) if destination_path.present?
     paths << inferred_destination_path
-    allowed_roots = [ Rails.root.join("storage", "content"), Rails.root.join("storage", "models") ].map(&:to_s)
+    allowed_roots = [ data_root.join("content"), data_root.join("models"), data_root.join("maps") ].map { |path| path.cleanpath.to_s }
     paths.flat_map { |path| [ path, path.sub_ext("#{path.extname}.part") ] }.uniq.each do |path|
       next unless allowed_roots.any? { |root| path.to_s.start_with?(root) }
 
@@ -61,7 +61,13 @@ class ContentDownload < ApplicationRecord
   def inferred_destination_path
     extension = download_extension
     safe_id = resource_id.gsub(/[^a-zA-Z0-9_.-]/, "-")
-    root = kind == "model" ? Rails.root.join("storage", "models") : Rails.root.join("storage", "content", kind)
+    root = if kind == "model"
+      data_root.join("models")
+    elsif kind == "map"
+      data_root.join("content", "map")
+    else
+      data_root.join("content", kind)
+    end
     root.join("#{safe_id}#{extension}")
   end
 
@@ -78,6 +84,15 @@ class ContentDownload < ApplicationRecord
     else
       ".zim"
     end
+  end
+
+  def data_root
+    Pathname.new(ENV.fetch("EMBER_VAULT_DATA_DIR", Rails.root.join("storage").to_s)).expand_path
+  end
+
+  def portable_path(value)
+    path = Pathname.new(value.to_s)
+    (path.absolute? ? path : data_root.join(path)).cleanpath
   end
 
   def document_content_type
