@@ -21,11 +21,11 @@ module EmberVault
     def setup
       ensure_directories
       ensure_secret
-      run!(%w[bundle install]) unless system("bundle", "check", chdir: APP_ROOT)
-      run!(%w[npm ci --prefix vendor/map_indexer])
-      ensure_local_ai_runtime unless ENV["EMBER_VAULT_SKIP_LOCAL_AI_RUNTIME"] == "1"
+      run!(%w[bundle install]) unless bundled_runtime? || system("bundle", "check", chdir: APP_ROOT)
+      run!(%w[npm ci --prefix vendor/map_indexer]) unless bundled_runtime?
+      ensure_local_ai_runtime unless bundled_runtime? || ENV["EMBER_VAULT_SKIP_LOCAL_AI_RUNTIME"] == "1"
       run!(%w[bin/rails db:prepare], env: production_env)
-      run!(%w[bin/rails assets:precompile], env: production_env.merge("SECRET_KEY_BASE_DUMMY" => "1"))
+      run!(%w[bin/rails assets:precompile], env: production_env.merge("SECRET_KEY_BASE_DUMMY" => "1")) unless bundled_runtime?
       say "Ember Vault setup complete."
     end
 
@@ -151,6 +151,10 @@ module EmberVault
       Dir.glob(File.join(STORAGE_ROOT, "*.sqlite3*")).each { |path| FileUtils.rm_f(path) }
       Dir.glob(File.join(backup, "*")).each { |path| FileUtils.cp(path, STORAGE_ROOT) }
       say "Restored databases from #{backup}."
+    end
+
+    def bundled_runtime?
+      ENV["EMBER_VAULT_BUNDLED_RUNTIME"] == "1"
     end
 
     def ensure_directories
