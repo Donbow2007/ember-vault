@@ -34,7 +34,6 @@ class AssistantController < ApplicationController
     response = AssistantResponse.create!(
       question: question.first(500),
       answer: nil,
-      source_passage_ids: [],
       response_mode: LocalAiRuntime.new.profile,
       status: "queued"
     )
