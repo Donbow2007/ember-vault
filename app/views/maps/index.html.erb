@@ -9,14 +9,14 @@
     <div class="atlas-region-grid">
       <% @maps.each do |map| %>
         <%= link_to map_path(map), class: "atlas-region-card" do %>
-          <small>PMTILES // <%= number_to_human_size(map.downloaded_bytes) %></small>
+          <small>PMTILES // <%= number_to_human_size(map.byte_size) %></small>
           <h2><%= map.title %></h2>
-          <p><%= File.basename(map.destination_path.to_s) %> · <%= pluralize(map.map_features.count, "INDEXED NAME") %></p>
+          <p><%= File.basename(map.stored_path.to_s) %> · <%= pluralize(map.map_features.count, "INDEXED NAME") %></p>
           <span>OPEN REGION →</span>
         <% end %>
       <% end %>
       <% if @maps.empty? %>
-        <div class="empty-archive"><b>NO MAPS SECURED</b><p>Select map regions in setup and allow their downloads to complete.</p></div>
+        <div class="empty-archive"><b>NO MAPS SECURED</b><p>Copy or install a PMTiles map pack into Ember Vault map storage.</p></div>
       <% end %>
     </div>
   </main>
