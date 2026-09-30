@@ -13,7 +13,9 @@ Rails.application.routes.draw do
     post :check
     post :install
   end
-  resources :models, only: :index
+  resources :models, only: [ :index, :destroy ] do
+    post :install, on: :member
+  end
   resources :maps, only: [ :index, :show ] do
     get :archive, on: :member
     get :search, on: :member
