@@ -154,7 +154,7 @@ module EmberVault
     end
 
     def ensure_directories
-      %w[archive_files content models backups].each { |directory| FileUtils.mkdir_p(File.join(STORAGE_ROOT, directory)) }
+      %w[archive_files content models maps backups tmp].each { |directory| FileUtils.mkdir_p(File.join(STORAGE_ROOT, directory)) }
     end
 
     def ensure_local_ai_runtime
@@ -195,6 +195,7 @@ module EmberVault
         "RACK_ENV" => "production",
         "SECRET_KEY_BASE" => File.read(SECRET_PATH).strip,
         "EMBER_VAULT_DATA_DIR" => STORAGE_ROOT,
+        "EMBER_VAULT_PORTABLE" => ENV.fetch("EMBER_VAULT_PORTABLE", "1"),
         "SOLID_QUEUE_IN_PUMA" => "1",
         "RAILS_MAX_THREADS" => ENV.fetch("RAILS_MAX_THREADS", "2"),
         "JOB_CONCURRENCY" => ENV.fetch("JOB_CONCURRENCY", "1"),
