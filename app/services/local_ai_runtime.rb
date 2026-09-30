@@ -9,7 +9,10 @@ class LocalAiRuntime
   TIMEOUT_SECONDS = ENV.fetch("EMBER_VAULT_AI_TIMEOUT", MAX_TIMEOUT_SECONDS).to_i.clamp(1, MAX_TIMEOUT_SECONDS)
   MODEL_FILES = {
     "smollm2-135m" => "smollm2-135m.gguf",
-    "smollm2-360m" => "smollm2-360m.gguf"
+    "smollm2-360m" => "smollm2-360m.gguf",
+    "survival-qwen-05b" => "survival-qwen-05b.gguf",
+    "survival-llama-1b" => "survival-llama-1b.gguf",
+    "survival-gemma-1b" => "survival-gemma-1b.gguf"
   }.freeze
   GROUNDING_STOP_WORDS = %w[a an and are as at be by for from has have in is it of on or that the this to was were will with you your].to_set.freeze
 
@@ -51,7 +54,8 @@ class LocalAiRuntime
     return Pathname.new(configured).expand_path if configured
 
     filename = MODEL_FILES[profile]
-    Rails.root.join("storage", "models", filename) if filename
+    data_root = ENV["EMBER_VAULT_DATA_DIR"].presence || Rails.root.join("storage").to_s
+    Pathname.new(data_root).join("models", filename) if filename
   end
 
   private
@@ -86,7 +90,7 @@ class LocalAiRuntime
       "--ctx-size", ENV.fetch("EMBER_VAULT_AI_CONTEXT", "1024"),
       "--predict", ENV.fetch("EMBER_VAULT_AI_TOKENS", "96"),
       "--batch-size", "128", "--ubatch-size", "128",
-      "--gpu-layers", "0", "--prio", "-1", "--poll", "0",
+      "--gpu-layers", ENV.fetch("EMBER_VAULT_GPU_LAYERS", "auto") == "auto" ? "999" : ENV.fetch("EMBER_VAULT_GPU_LAYERS"), "--prio", "-1", "--poll", "0",
       "--temp", "0", "--seed", "42", "--repeat-penalty", "1.08",
       "--no-display-prompt", "--simple-io" ]
   end
