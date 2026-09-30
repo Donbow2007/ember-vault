@@ -148,13 +148,7 @@ GEM
     parallel (1.28.0)
     parser (3.3.12.0)
       ast (~> 2.4.1)
-      racc
-    pdf-reader (2.16.0)
-      Ascii85 (>= 1.0, < 3.0, != 2.0.0)
-      afm (>= 0.2.1, < 2)
-      hashery (~> 2.0)
-      ttfunk
-    pp (0.6.4)
+      racc    pp (0.6.4)
       prettyprint
     prettyprint (0.2.0)
     prism (1.9.0)
@@ -295,7 +289,6 @@ DEPENDENCIES
   brakeman
   debug
   importmap-rails
-  pdf-reader (~> 2.15)
   propshaft
   puma (>= 5.0)
   rails (~> 8.0.5, >= 8.0.5.1)
