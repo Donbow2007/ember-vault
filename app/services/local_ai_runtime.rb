@@ -1,148 +1,78 @@
-require "open3"
+require "json"
+require "net/http"
 
 class LocalAiRuntime
   class Error < StandardError; end
   class TimeoutError < Error; end
   class CancelledError < Error; end
 
-  MAX_TIMEOUT_SECONDS = 4
-  TIMEOUT_SECONDS = ENV.fetch("EMBER_VAULT_AI_TIMEOUT", MAX_TIMEOUT_SECONDS).to_i.clamp(1, MAX_TIMEOUT_SECONDS)
-  MODEL_FILES = {
-    "smollm2-135m" => "smollm2-135m.gguf",
-    "smollm2-360m" => "smollm2-360m.gguf",
-    "survival-qwen-05b" => "survival-qwen-05b.gguf",
-    "survival-llama-1b" => "survival-llama-1b.gguf",
-    "survival-gemma-1b" => "survival-gemma-1b.gguf"
-  }.freeze
+  SYSTEM_PROMPT = <<~PROMPT.squish
+    You are Ember, a calm offline survival and field-guide companion. Answer directly and practically.
+    Prefer concise, field-ready instructions. State uncertainty when missing details materially affect safety.
+    You are offline; never claim to have searched the internet or external documents.
+  PROMPT
 
   attr_reader :profile
 
   def initialize(profile: nil)
-    @profile = profile.presence || ENV["EMBER_VAULT_AI_PROFILE"].presence || installed_profile || "survival-qwen-05b"
+    @entry = ModelCatalog.find(profile.presence || ENV["EMBER_VAULT_AI_PROFILE"].presence) ||
+      ModelCatalog.installed.first || ModelCatalog.entries.first
+    @profile = @entry&.id
   end
 
   def available?
-    executable_path.present? && model_path&.file?
+    @entry.present? && ModelCatalog.model_path(@entry).file?
   end
 
   def status
-    return :source_only unless MODEL_FILES.key?(profile)
-    return :runtime_missing if executable_path.blank?
-    return :model_missing unless model_path&.file?
+    return :model_unconfigured unless @entry
+    return :model_missing unless available?
 
     :ready
   end
 
   def generate(prompt, cancelled: -> { false })
-    raise Error, "Local model runtime is not ready" unless available?
+    raise Error, "No local model is installed or available." unless available?
+    raise CancelledError, "Local model response was stopped" if cancelled.call
 
-    stdout, stderr, process_status = capture(command(prompt), cancelled:)
-    raise Error, stderr.to_s.squish.presence || "Local model exited with status #{process_status.exitstatus}" unless process_status.success?
+    server.ensure_running!
+    request = Net::HTTP::Post.new(server.endpoint)
+    request["Content-Type"] = "application/json"
+    request.body = JSON.generate(
+      model: @entry.id,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: prompt.question }
+      ],
+      max_tokens: ENV.fetch("EMBER_VAULT_AI_TOKENS", "256").to_i,
+      temperature: @entry.runtime.fetch("temperature", 0.6),
+      repeat_penalty: @entry.runtime.fetch("repeat_penalty", 1.1),
+      stream: false
+    )
 
-    output = clean_output(stdout)
-    raise Error, "Local model returned an unusable response" if output.blank?
-
-    output
-  end
-
-  def model_path
-    configured = ENV["EMBER_VAULT_MODEL_PATH"].presence
-    if configured
-      Pathname.new(configured).expand_path
-    else
-      filename = MODEL_FILES[profile]
-    data_root = ENV["EMBER_VAULT_DATA_DIR"].presence || Rails.root.join("storage").to_s
-      Pathname.new(data_root).join("models", filename) if filename
+    response = Net::HTTP.start(server.endpoint.host, server.endpoint.port, open_timeout: 3, read_timeout: request_timeout) do |http|
+      http.request(request)
     end
+    raise Error, "Local model server returned HTTP #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+    raise CancelledError, "Local model response was stopped" if cancelled.call
+
+    content = JSON.parse(response.body).dig("choices", 0, "message", "content").to_s.strip
+    raise Error, "Local model returned an empty response" if content.blank?
+
+    content.first(12_000)
+  rescue Net::ReadTimeout
+    raise TimeoutError, "Local model response timed out"
+  rescue JSON::ParserError => error
+    raise Error, "Local model returned invalid JSON: #{error.message}"
   end
 
   private
 
-  def installed_profile
-    MODEL_FILES.find { |_name, filename| Pathname.new(ENV.fetch("EMBER_VAULT_DATA_DIR", Rails.root.join("storage").to_s)).join("models", filename).file? }&.first
+  def server
+    @server ||= LocalAiServer.new(entry: @entry)
   end
 
-  def executable_path
-    @executable_path ||= begin
-      configured = ENV["LLAMA_COMPLETION_PATH"].presence || ENV["LLAMA_CLI_PATH"].presence
-      executable = Gem.win_platform? ? "llama-completion.exe" : "llama-completion"
-      bundled = Rails.root.join("vendor", "llama.cpp", "build", "bin", executable)
-      configured || (bundled.to_s if bundled.file? && File.executable?(bundled)) ||
-        find_executable(Gem.win_platform? ? %w[llama-completion.exe llama-completion] : %w[llama-completion])
-    end
-  end
-
-  def find_executable(names)
-    ENV.fetch("PATH", "").split(File::PATH_SEPARATOR).each do |directory|
-      names.each do |name|
-        candidate = File.join(directory, name)
-        return candidate if File.file?(candidate) && File.executable?(candidate)
-      end
-    end
-    nil
-  end
-
-  def command(prompt)
-    [ executable_path,
-      "--model", model_path.to_s,
-      "--prompt", prompt.completion_prompt,
-      "--no-conversation",
-      "--threads", ENV.fetch("EMBER_VAULT_AI_THREADS", "2"),
-      "--threads-batch", ENV.fetch("EMBER_VAULT_AI_THREADS", "2"),
-      "--ctx-size", ENV.fetch("EMBER_VAULT_AI_CONTEXT", "1024"),
-      "--predict", ENV.fetch("EMBER_VAULT_AI_TOKENS", "96"),
-      "--batch-size", "128", "--ubatch-size", "128",
-      "--gpu-layers", ENV.fetch("EMBER_VAULT_GPU_LAYERS", "auto") == "auto" ? "999" : ENV.fetch("EMBER_VAULT_GPU_LAYERS"), "--prio", "-1", "--poll", "0",
-      "--temp", "0", "--seed", "42", "--repeat-penalty", "1.08",
-      "--no-display-prompt", "--simple-io" ]
-  end
-
-  def capture(command, cancelled: -> { false })
-    spawn_options = Gem.win_platform? ? {} : { pgroup: true }
-    stdin, stdout, stderr, wait_thread = Open3.popen3(*command, **spawn_options)
-    stdin.close
-    stdout_reader = Thread.new { stdout.read }
-    stderr_reader = Thread.new { stderr.read }
-    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + TIMEOUT_SECONDS
-
-    loop do
-      break if wait_thread.join(0.2)
-
-      if cancelled.call
-        terminate(wait_thread.pid)
-        wait_thread.join(2)
-        raise CancelledError, "Local model response was stopped"
-      end
-
-      if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
-        terminate(wait_thread.pid)
-        wait_thread.join(2)
-        raise TimeoutError, "Local model exceeded the #{TIMEOUT_SECONDS}-second limit"
-      end
-    end
-
-    [ stdout_reader.value, stderr_reader.value, wait_thread.value ]
-  ensure
-    stdin&.close unless stdin&.closed?
-    stdout&.close unless stdout&.closed?
-    stderr&.close unless stderr&.closed?
-  end
-
-  def terminate(pid)
-    target = Gem.win_platform? ? pid : -pid
-    Process.kill("TERM", target)
-    sleep 0.25
-    Process.kill("KILL", target)
-  rescue Errno::ESRCH, Errno::EPERM
-    nil
-  end
-
-  def clean_output(output)
-    output.to_s
-      .gsub(/\e\[[0-9;]*[A-Za-z]/, "")
-      .sub(/\A\s*assistant\s*[:>]\s*/i, "")
-      .sub(/\s*\[end of text\]\s*\z/i, "")
-      .strip
-      .first(8_000)
+  def request_timeout
+    ENV.fetch("EMBER_VAULT_AI_TIMEOUT", "180").to_i.clamp(10, 600)
   end
 end
