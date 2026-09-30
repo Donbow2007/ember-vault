@@ -1,24 +1,41 @@
-# Ember Vault model catalog
-#
-# GGUF binaries are intentionally not committed to Git. The app/model tooling
-# downloads them into storage/models on the same drive as Ember Vault.
-#
-# Before promoting a candidate to a default model, pin the exact upstream
-# repository, GGUF filename, SHA-256 checksum, license, and expected size here.
-
 models:
   survival-qwen-05b:
     role: survival
-    display_name: Survival Qwen 0.5B candidate
+    display_name: SurvivalAI Qwen 2.5 0.5B
+    repository: wattsonandme/survival-qwen-0.5b
+    upstream_filename: v3-survival-qwen-0.5b-q4_k_m.gguf
     filename: survival-qwen-05b.gguf
+    quantization: Q4_K_M
+    approximate_bytes: 398458880
+    license: apache-2.0
     status: benchmark_candidate
+    runtime:
+      context: 2048
+      temperature: 0.7
+      repeat_penalty: 1.15
   survival-llama-1b:
     role: survival
-    display_name: Survival Llama 1B candidate
+    display_name: NikiAI Survival Llama 3.2 1B
+    repository: SlayThat/NikiAI-Survival
+    upstream_filename: llama-3.2-1b.Q4_K_M.gguf
     filename: survival-llama-1b.gguf
+    quantization: Q4_K_M
+    license: llama3.2
     status: benchmark_candidate
+    runtime:
+      context: 2048
+      temperature: 0.5
+      repeat_penalty: 1.1
   survival-gemma-1b:
     role: survival
-    display_name: Survival Gemma 1B candidate
+    display_name: Survival AI Gemma 1B
+    repository: Cholarajarp/survival-ai
+    upstream_filename: survival_safe_Q4.gguf
     filename: survival-gemma-1b.gguf
+    quantization: Q4
+    approximate_bytes: 806354944
     status: benchmark_candidate
+    runtime:
+      context: 2048
+      temperature: 0.6
+      repeat_penalty: 1.1
