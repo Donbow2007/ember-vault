@@ -4,10 +4,25 @@ class ReplaceArchiveWithMapPacks < ActiveRecord::Migration[8.0]
       t.string :title, null: false
       t.string :stored_path, null: false
       t.integer :byte_size, default: 0, null: false
+      t.string :format, default: "pmtiles", null: false
+      t.string :region
+      t.string :version
       t.timestamps
-    end
+    end unless table_exists?(:map_packs)
 
-    if table_exists?(:map_features)
+    unless table_exists?(:map_features)
+      create_table :map_features do |t|
+        t.references :map_pack, null: false, foreign_key: true
+        t.string :name
+        t.string :category
+        t.string :kind
+        t.float :latitude
+        t.float :longitude
+        t.timestamps
+      end
+      add_index :map_features, [ :map_pack_id, :name ]
+      add_index :map_features, [ :map_pack_id, :category ]
+    else
       remove_foreign_key :map_features, :content_downloads if foreign_key_exists?(:map_features, :content_downloads)
       remove_column :map_features, :content_download_id if column_exists?(:map_features, :content_download_id)
       add_reference :map_features, :map_pack, null: true, foreign_key: true unless column_exists?(:map_features, :map_pack_id)
