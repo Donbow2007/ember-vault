@@ -13,8 +13,7 @@ class MapsController < ApplicationController
     pack = map_pack
     path = pack.archive_path
     unless File.file?(path)
-      head :not_found
-      return
+      return head :not_found
     end
 
     response.headers["Accept-Ranges"] = "bytes"
