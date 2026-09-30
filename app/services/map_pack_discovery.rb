@@ -5,29 +5,32 @@ class MapPackDiscovery
 
   def call
     EmberVault::PortableStorage.prepare!
-    discovered = Dir.glob(EmberVault::PortableStorage.path("maps", "*", MANIFEST)).filter_map { |path| discover(Pathname.new(path)) }
-    MapPack.where.not(id: discovered).destroy_all
-    discovered
+    Dir.glob(EmberVault::PortableStorage.path("maps", "*", MANIFEST)).filter_map { |path| discover(Pathname.new(path)) }
   end
 
   private
 
   def discover(manifest_path)
     metadata = JSON.parse(manifest_path.read)
-    pmtiles = manifest_path.dirname.join(metadata.fetch("pmtiles"))
+    raise KeyError, "unsupported map pack format" unless metadata.fetch("format", "ember-map-pack") == "ember-map-pack"
+    raise KeyError, "unsupported map pack version" unless metadata.fetch("version").to_s == "1"
+
+    pmtiles = manifest_path.dirname.join(metadata.fetch("pmtiles")).expand_path
+    pack_root = manifest_path.dirname.expand_path
+    raise KeyError, "PMTiles path escapes its pack directory" unless pmtiles.to_s.start_with?("#{pack_root}#{File::SEPARATOR}")
     return unless pmtiles.file?
 
-    relative = pmtiles.relative_path_from(EmberVault::PortableStorage.root).to_s
+    relative = pmtiles.relative_path_from(EmberVault::PortableStorage.root.expand_path).to_s
     pack = MapPack.find_or_initialize_by(stored_path: relative)
     pack.update!(
       title: metadata.fetch("title"),
       byte_size: pmtiles.size,
       format: "pmtiles",
       region: metadata["region"],
-      version: metadata["version"]
+      version: metadata.fetch("version").to_s
     )
-    pack.id
-  rescue JSON::ParserError, KeyError => error
+    pack
+  rescue JSON::ParserError, KeyError, ArgumentError => error
     Rails.logger.warn("Ignoring invalid map pack #{manifest_path}: #{error.message}")
     nil
   end
