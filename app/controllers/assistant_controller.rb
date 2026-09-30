@@ -24,37 +24,25 @@ class AssistantController < ApplicationController
 
   def cancel
     response = AssistantResponse.find(params[:id])
-    if response.pending?
-      status = response.answer.present? && response.queued? ? "complete" : (response.queued? ? "cancelled" : "cancel_requested")
-      response.update!(status:)
-    end
+    response.update!(status: response.queued? ? "cancelled" : "cancel_requested") if response.pending?
     redirect_to assistant_path(response_id: response.id)
   end
 
   private
 
   def answer_and_redirect(question)
-    question = question.first(500)
-    retrieval = ArchiveAnswer.new(question).call
-    answer = if retrieval.found?
-      SourceAnswerFormatter.new(question:, sources: retrieval.sources).call
-    else
-      AssistantPrompt::INSUFFICIENT_MESSAGE
-    end
-    response = AssistantResponse.create!(question:, answer:,
-      source_passage_ids: retrieval.sources.map { |source| source.passage.id },
-      response_mode: "source-assistant", status: "complete")
-    enqueue_model_enhancement(response) if retrieval.found?
-    redirect_to assistant_path(response_id: response.id)
-  end
-
-  def enqueue_model_enhancement(response)
-    return unless LocalAiRuntime.new.available? && AssistantResponseJob.model_eligible?(response.question)
-
-    response.update!(status: "queued")
+    response = AssistantResponse.create!(
+      question: question.first(500),
+      answer: nil,
+      source_passage_ids: [],
+      response_mode: LocalAiRuntime.new.profile,
+      status: "queued"
+    )
     job = AssistantResponseJob.perform_later(response)
-    response.update!(status: "complete", error_message: "Local refinement could not be queued.") unless job.successfully_enqueued?
+    response.update!(status: "failed", error_message: "Local AI could not be queued.") unless job.successfully_enqueued?
+    redirect_to assistant_path(response_id: response.id)
   rescue ActiveJob::EnqueueError => error
-    response.update!(status: "complete", error_message: error.message)
+    response&.update!(status: "failed", error_message: error.message)
+    redirect_to assistant_path(response_id: response&.id), alert: "Local AI could not be started."
   end
 end
