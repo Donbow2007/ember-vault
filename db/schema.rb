@@ -28,6 +28,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_09_30_220000) do
     t.string "title", null: false
     t.string "stored_path", null: false
     t.integer "byte_size", default: 0, null: false
+    t.string "format"
+    t.string "region"
+    t.string "version"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
   end
