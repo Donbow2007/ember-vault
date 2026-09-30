@@ -10,9 +10,11 @@ class MapsController < ApplicationController
 
   def archive
     download = completed_map
-    path = Rails.root.join(download.destination_path).cleanpath
-    content_root = Rails.root.join("storage", "content", "map").cleanpath
-    return head :not_found unless path.to_s.start_with?("#{content_root}/") && File.file?(path)
+    data_root = Pathname.new(ENV.fetch("EMBER_VAULT_DATA_DIR", Rails.root.join("storage").to_s)).expand_path
+    raw_path = Pathname.new(download.destination_path)
+    path = (raw_path.absolute? ? raw_path : data_root.join(raw_path)).cleanpath
+    content_root = data_root.join("content", "map").cleanpath
+    return head :not_found unless path.to_s.start_with?("#{content_root}#{File::SEPARATOR}") && File.file?(path)
 
     response.headers["Accept-Ranges"] = "bytes"
     response.headers["Cache-Control"] = "private, max-age=3600"
