@@ -1,5 +1,5 @@
 class SetupConfiguration < ApplicationRecord
-  AI_PROFILES = %w[disabled source-assistant smollm2-135m smollm2-360m].freeze
+  AI_PROFILES = %w[disabled source-assistant smollm2-135m smollm2-360m survival-qwen-05b survival-llama-1b survival-gemma-1b].freeze
   THEMES = %w[dark light].freeze
   serialize :capabilities, coder: JSON, type: Array
   serialize :selected_resources, coder: JSON, type: Array
