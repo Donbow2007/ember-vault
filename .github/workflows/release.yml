@@ -59,6 +59,10 @@ jobs:
           mkdir -p dist/ember-vault-${{ matrix.platform }}/runtime/llama
           find build-llama/out -type f \( -name 'llama-server' -o -name 'llama-server.exe' -o -name '*.dll' -o -name '*.dylib' -o -name 'libggml*.so*' -o -name 'libllama.so*' \) -exec cp {} dist/ember-vault-${{ matrix.platform }}/runtime/llama/ \;
 
+      - name: Validate portable bundle
+        shell: bash
+        run: ruby script/validate_portable.rb dist/ember-vault-${{ matrix.platform }}
+
       - name: Archive Unix
         if: runner.os != 'Windows'
         shell: bash
