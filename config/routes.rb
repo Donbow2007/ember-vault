@@ -1,6 +1,9 @@
 Rails.application.routes.draw do
   root "dashboard#index"
   get "search", to: "dashboard#index"
+  resource :onboarding, only: :show, controller: "onboarding" do
+    post :complete
+  end
   get "assistant", to: "assistant#show", as: :assistant
   post "assistant", to: "assistant#create"
   get "assistant/responses/:id", to: "assistant#status", as: :assistant_response
