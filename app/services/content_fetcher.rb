@@ -34,7 +34,7 @@ class ContentFetcher
     @temporary_path = destination.sub_ext("#{destination.extname}.part")
     fetch(URI.parse(@download.source_url), @temporary_path, initial: true)
     handle_control_request!
-    @download.update!(status: "complete", destination_path: destination.relative_path_from(Rails.root).to_s)
+    @download.update!(status: "complete", destination_path: portable_destination(destination))
     @download.enqueue_indexing!
     @download.enqueue_map_indexing!
   rescue TransferCancelled => error
@@ -107,5 +107,13 @@ class ContentFetcher
 
   def destination_path
     @download.inferred_destination_path
+  end
+
+  def portable_destination(destination)
+    data_root = Pathname.new(ENV.fetch("EMBER_VAULT_DATA_DIR", Rails.root.join("storage").to_s)).expand_path.cleanpath
+    destination = destination.expand_path.cleanpath
+    destination.relative_path_from(data_root).to_s
+  rescue ArgumentError
+    destination.to_s
   end
 end
