@@ -22,5 +22,4 @@ FileUtils.cp_r(Dir.glob(File.join(ruby_prefix, "*")), File.join(runtime, "ruby")
 
 FileUtils.mkdir_p(File.join(output, "storage"))
 %w[models maps database settings logs backups tmp].each { |dir| FileUtils.mkdir_p(File.join(output, "storage", dir)) }
-
 puts output
