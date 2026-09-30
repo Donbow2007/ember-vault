@@ -10,6 +10,12 @@ module ActiveSupport
     # Setup all fixtures in test/fixtures/*.yml for all tests in alphabetical order.
     fixtures :all
 
+    setup do
+      marker = EmberVault::PortableStorage.path("settings", "onboarding.complete")
+      FileUtils.mkdir_p(marker.dirname)
+      File.write(marker, "test")
+    end
+
     # Add more helper methods to be used by all tests here...
   end
 end
