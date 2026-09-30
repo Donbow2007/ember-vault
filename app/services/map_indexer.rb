@@ -10,7 +10,9 @@ class MapIndexer
   end
 
   def call
-    path = Rails.root.join(@download.destination_path)
+    root = Pathname.new(ENV.fetch("EMBER_VAULT_DATA_DIR", Rails.root.join("storage").to_s)).expand_path
+    stored = Pathname.new(@download.destination_path)
+    path = (stored.absolute? ? stored : root.join(stored)).cleanpath
     features = []
     Open3.popen3({ "NODE_PATH" => MODULES.to_s }, "node", SCRIPT.to_s, path.to_s) do |stdin, stdout, stderr, thread|
       stdin.close
