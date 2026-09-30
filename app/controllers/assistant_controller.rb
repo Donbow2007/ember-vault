@@ -7,7 +7,6 @@ class AssistantController < ApplicationController
       @question = params[:question].to_s.strip
       return answer_and_redirect(@question) if @question.present?
     end
-    @configuration = SetupConfiguration.order(created_at: :desc).first
   end
 
   def create
