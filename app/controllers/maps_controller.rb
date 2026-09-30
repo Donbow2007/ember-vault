@@ -1,5 +1,6 @@
 class MapsController < ApplicationController
   def index
+    MapPackDiscovery.new.call
     @maps = MapPack.includes(:map_features).order(:title)
   end
 
