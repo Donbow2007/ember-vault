@@ -14,7 +14,6 @@ class LocalAiRuntime
     "survival-llama-1b" => "survival-llama-1b.gguf",
     "survival-gemma-1b" => "survival-gemma-1b.gguf"
   }.freeze
-  GROUNDING_STOP_WORDS = %w[a an and are as at be by for from has have in is it of on or that the this to was were will with you your].to_set.freeze
 
   attr_reader :profile
 
@@ -48,7 +47,7 @@ class LocalAiRuntime
 
   def model_path
     configured = ENV["EMBER_VAULT_MODEL_PATH"].presence
-    return Pathname.new(configured).expand_path if configured
+    Pathname.new(configured).expand_path if configured
 
     filename = MODEL_FILES[profile]
     data_root = ENV["EMBER_VAULT_DATA_DIR"].presence || Rails.root.join("storage").to_s
@@ -144,5 +143,4 @@ class LocalAiRuntime
       .strip
       .first(8_000)
   end
-
 end
