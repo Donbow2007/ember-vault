@@ -1,6 +1,4 @@
 #!/usr/bin/env ruby
-require "fileutils"
-
 root = File.expand_path(ARGV.fetch(0, File.join(__dir__, "..")))
 required = %w[models maps database settings logs backups tmp]
 errors = []
