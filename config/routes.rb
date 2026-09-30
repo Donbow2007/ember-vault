@@ -15,8 +15,6 @@ Rails.application.routes.draw do
     get :search, on: :member
     post :reindex, on: :member
   end
-  resource :setup, only: [ :show, :create ], controller: "setup"
-  get "setup/complete", to: "setup#complete", as: :setup_complete
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
