@@ -40,9 +40,20 @@ class LocalAiServer
     FileUtils.mkdir_p(log_path.dirname)
     log = File.open(log_path, "a")
     options = Gem.win_platform? ? { new_pgroup: true } : { pgroup: true }
-    pid = Process.spawn(*command, out: log, err: log, **options)
+    pid = spawn_server(command, log, options)
     Process.detach(pid)
     File.write(pid_path, pid)
+  end
+
+  def spawn_server(server_command, log, options)
+    Process.spawn(*server_command, out: log, err: log, **options)
+  rescue StandardError => error
+    raise unless gpu_layers == "999"
+
+    log.puts("GPU launch failed (#{error.message}); retrying CPU-only.")
+    cpu_command = server_command.dup
+    cpu_command[cpu_command.index("--n-gpu-layers") + 1] = "0"
+    Process.spawn(*cpu_command, out: log, err: log, **options)
   end
 
   def command
