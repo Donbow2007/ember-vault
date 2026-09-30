@@ -6,6 +6,7 @@
   <nav class="primary-nav" aria-label="Primary navigation">
     <%= link_to "Ember", assistant_path, class: ("active" if controller_name == "assistant") %>
     <%= link_to "Maps", maps_path, class: ("active" if controller_name == "maps") %>
+    <%= link_to "Models", models_path, class: ("active" if controller_name == "models") %>
     <%= link_to "Settings", updates_path, class: ("active" if controller_name.in?(%w[updates settings])) %>
   </nav>
   <div class="network-state"><span></span> OFFLINE READY</div>
