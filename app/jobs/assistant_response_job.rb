@@ -1,9 +1,8 @@
 class AssistantResponseJob < ApplicationJob
   queue_as :ai
 
-  def self.model_eligible?(question)
-    words = question.downcase.scan(/[[:alpha:]]+/)
-    (words & %w[how recipe make prepare cook bake repair build treat steps instructions medical medicine dose dosage wound burn fire electrical chemical]).empty?
+  def self.model_eligible?(_question)
+    true
   end
 
   def perform(response)
@@ -16,13 +15,7 @@ class AssistantResponseJob < ApplicationJob
     response.update!(source_passage_ids: source_ids)
     return mark_cancelled(response) if response.reload.cancel_requested?
 
-    if retrieval.found?
-      answer, mode, runtime_error = build_answer(response, retrieval.sources)
-    else
-      answer = AssistantPrompt::INSUFFICIENT_MESSAGE
-      mode = "source-assistant"
-      runtime_error = nil
-    end
+    answer, mode, runtime_error = build_answer(response, retrieval.sources)
 
     return mark_cancelled(response) if response.reload.cancel_requested?
 
@@ -39,8 +32,10 @@ class AssistantResponseJob < ApplicationJob
 
   def build_answer(response, sources)
     runtime = LocalAiRuntime.new
-    fallback = -> { SourceAnswerFormatter.new(question: response.question, sources:).call }
-    return [ fallback.call, "source-assistant", nil ] unless runtime.available? && self.class.model_eligible?(response.question)
+    fallback = -> {
+      sources.any? ? SourceAnswerFormatter.new(question: response.question, sources:).call : AssistantPrompt::INSUFFICIENT_MESSAGE
+    }
+    return [ fallback.call, "source-assistant", nil ] unless runtime.available?
 
     prompt = AssistantPrompt.new(question: response.question, sources:)
     cancellation_check = -> { response.reload.cancel_requested? }
