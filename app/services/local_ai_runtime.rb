@@ -19,7 +19,7 @@ class LocalAiRuntime
   attr_reader :profile
 
   def initialize(profile: nil)
-    @profile = profile.presence || SetupConfiguration.order(created_at: :desc).pick(:ai_profile) || "source-assistant"
+    @profile = profile.presence || ENV["EMBER_VAULT_AI_PROFILE"].presence || installed_profile || "survival-qwen-05b"
   end
 
   def available?
@@ -41,10 +41,7 @@ class LocalAiRuntime
     raise Error, stderr.to_s.squish.presence || "Local model exited with status #{process_status.exitstatus}" unless process_status.success?
 
     output = clean_output(stdout)
-    if output.exclude?("[1]") && prompt.source_count == 1 && output != AssistantPrompt::INSUFFICIENT_MESSAGE
-      output = "#{output} [1]"
-    end
-    raise Error, "Local model returned an unusable response" if unusable_output?(output, prompt)
+    raise Error, "Local model returned an unusable response" if output.blank?
 
     output
   end
@@ -59,6 +56,10 @@ class LocalAiRuntime
   end
 
   private
+
+  def installed_profile
+    MODEL_FILES.find { |_name, filename| Pathname.new(ENV.fetch("EMBER_VAULT_DATA_DIR", Rails.root.join("storage").to_s)).join("models", filename).file? }&.first
+  end
 
   def executable_path
     @executable_path ||= begin
@@ -144,23 +145,4 @@ class LocalAiRuntime
       .first(8_000)
   end
 
-  def unusable_output?(output, prompt)
-    output.blank? || output.match?(/\A(?:Question|Format|Sources):/i) ||
-      !output.match?(/\[\d+\]/) || !grounded_output?(output, prompt.source_text)
-  end
-
-  def grounded_output?(output, source_text)
-    source_words = source_text.downcase.scan(/[[:alnum:]]+/)
-    output_words = output.downcase.gsub(/\[\d+\]/, "").scan(/[[:alnum:]]+/)
-    source_numbers = source_words.grep(/\A\d/).to_set
-    return false unless output_words.grep(/\A\d/).all? { |number| source_numbers.include?(number) }
-
-    meaningful = output_words.reject { |word| word.length < 3 || GROUNDING_STOP_WORDS.include?(word) }
-    return true if meaningful.empty?
-
-    supported = meaningful.count do |word|
-      source_words.any? { |source_word| source_word.start_with?(word) || word.start_with?(source_word) }
-    end
-    supported.fdiv(meaningful.size) >= 0.58
-  end
 end
