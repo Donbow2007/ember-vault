@@ -12,14 +12,16 @@ class MapsController < ApplicationController
   def archive
     pack = map_pack
     path = pack.archive_path
-    return head :not_found unless File.file?(path)
-
-    response.headers["Accept-Ranges"] = "bytes"
+    if File.file?(path)
+      response.headers["Accept-Ranges"] = "bytes"
     response.headers["Cache-Control"] = "private, max-age=3600"
-    if request.headers["Range"].present?
-      serve_range(path, request.headers["Range"])
+      if request.headers["Range"].present?
+        serve_range(path, request.headers["Range"])
+      else
+        send_file path, type: "application/octet-stream", disposition: "inline"
+      end
     else
-      send_file path, type: "application/octet-stream", disposition: "inline"
+      head :not_found
     end
   end
 
