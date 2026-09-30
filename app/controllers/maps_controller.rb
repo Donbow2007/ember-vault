@@ -19,9 +19,11 @@ class MapsController < ApplicationController
 
     response.headers["Accept-Ranges"] = "bytes"
     response.headers["Cache-Control"] = "private, max-age=3600"
-    return serve_range(path, request.headers["Range"]) if request.headers["Range"].present?
-
-    send_file path, type: "application/octet-stream", disposition: "inline"
+    if request.headers["Range"].present?
+      serve_range(path, request.headers["Range"])
+    else
+      send_file path, type: "application/octet-stream", disposition: "inline"
+    end
   end
 
   def search
