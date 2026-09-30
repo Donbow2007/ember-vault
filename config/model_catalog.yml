@@ -1,0 +1,24 @@
+# Ember Vault model catalog
+#
+# GGUF binaries are intentionally not committed to Git. The app/model tooling
+# downloads them into storage/models on the same drive as Ember Vault.
+#
+# Before promoting a candidate to a default model, pin the exact upstream
+# repository, GGUF filename, SHA-256 checksum, license, and expected size here.
+
+models:
+  survival-qwen-05b:
+    role: survival
+    display_name: Survival Qwen 0.5B candidate
+    filename: survival-qwen-05b.gguf
+    status: benchmark_candidate
+  survival-llama-1b:
+    role: survival
+    display_name: Survival Llama 1B candidate
+    filename: survival-llama-1b.gguf
+    status: benchmark_candidate
+  survival-gemma-1b:
+    role: survival
+    display_name: Survival Gemma 1B candidate
+    filename: survival-gemma-1b.gguf
+    status: benchmark_candidate
