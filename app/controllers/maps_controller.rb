@@ -1,20 +1,17 @@
 class MapsController < ApplicationController
   def index
-    @maps = ContentDownload.where(kind: "map", status: "complete").includes(:map_features).order(:title)
+    @maps = MapPack.includes(:map_features).order(:title)
   end
 
   def show
-    @map_download = completed_map
-    @selected_feature = @map_download.map_features.find_by(id: params[:feature_id])
+    @map_pack = map_pack
+    @selected_feature = @map_pack.map_features.find_by(id: params[:feature_id])
   end
 
   def archive
-    download = completed_map
-    data_root = Pathname.new(ENV.fetch("EMBER_VAULT_DATA_DIR", Rails.root.join("storage").to_s)).expand_path
-    raw_path = Pathname.new(download.destination_path)
-    path = (raw_path.absolute? ? raw_path : data_root.join(raw_path)).cleanpath
-    content_root = data_root.join("content", "map").cleanpath
-    return head :not_found unless path.to_s.start_with?("#{content_root}#{File::SEPARATOR}") && File.file?(path)
+    pack = map_pack
+    path = pack.archive_path
+    return head :not_found unless File.file?(path)
 
     response.headers["Accept-Ranges"] = "bytes"
     response.headers["Cache-Control"] = "private, max-age=3600"
@@ -24,21 +21,19 @@ class MapsController < ApplicationController
   end
 
   def search
-    download = completed_map
-    ranked = MapSearch.new(download.map_features).call(params[:q])
+    ranked = MapSearch.new(map_pack.map_features).call(params[:q])
     render json: ranked.as_json(only: %i[id name category kind latitude longitude])
   end
 
   def reindex
-    download = completed_map
-    download.enqueue_map_indexing!
-    redirect_to documents_path, notice: "#{download.title} queued for geographic reindexing."
+    MapIndexJob.perform_later(map_pack)
+    redirect_to maps_path, notice: "#{map_pack.title} queued for geographic reindexing."
   end
 
   private
 
-  def completed_map
-    ContentDownload.where(kind: "map", status: "complete").find(params[:id])
+  def map_pack
+    MapPack.find(params[:id])
   end
 
   def serve_range(path, header)
@@ -47,7 +42,7 @@ class MapsController < ApplicationController
 
     file_size = File.size(path)
     first = match[1].to_i
-    last = match[2].present? ? [ match[2].to_i, file_size - 1 ].min : file_size - 1
+    last = match[2].present? ? [match[2].to_i, file_size - 1].min : file_size - 1
     return head :range_not_satisfiable if first >= file_size || last < first
 
     length = last - first + 1
