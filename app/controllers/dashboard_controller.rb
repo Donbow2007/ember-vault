@@ -13,7 +13,9 @@ class DashboardController < ApplicationController
     root = ENV.fetch("EMBER_VAULT_DATA_DIR", Rails.root.join("storage").to_s)
     output, status = Open3.capture2("df", "-Pk", root)
     fields = output.lines.last.to_s.split
-    return { used: 0, available: 0, percent: 0 } unless status.success? && fields.length >= 6
+    unless status.success? && fields.length >= 6
+      return { used: 0, available: 0, percent: 0 }
+    end
 
     used = fields[2].to_i.kilobytes
     available = fields[3].to_i.kilobytes
