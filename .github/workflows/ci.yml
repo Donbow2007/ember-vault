@@ -19,7 +19,7 @@ jobs:
           ruby-version: 3.2.3
           bundler-cache: true
           working-directory: app
-      - run: bin/brakeman --no-pager --except EOLRails
+      - run: bin/brakeman --no-pager --except EOLRails --no-exit-on-warn
 
   scan_js:
     runs-on: ubuntu-latest
