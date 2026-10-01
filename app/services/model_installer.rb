@@ -5,8 +5,9 @@ require "net/http"
 class ModelInstaller
   class Error < StandardError; end
 
-  def initialize(entry)
+  def initialize(entry, progress: nil)
     @entry = entry
+    @progress = progress
   end
 
   def install!
@@ -43,7 +44,13 @@ class ModelInstaller
         raise Error, "Model download failed with HTTP #{response.code}" unless response.is_a?(Net::HTTPSuccess)
 
         File.open(destination, "wb") do |file|
-          response.read_body { |chunk| file.write(chunk) }
+          total = response["content-length"].to_i
+          downloaded = 0
+          response.read_body do |chunk|
+            file.write(chunk)
+            downloaded += chunk.bytesize
+            @progress&.call(downloaded, total)
+          end
         end
       end
     end
