@@ -28,8 +28,29 @@ class ModelCatalog
     entries.select { |entry| model_path(entry).file? }
   end
 
+  def self.active
+    selected = File.read(active_model_path).strip
+    installed.find { |entry| entry.id == selected } || installed.first
+  rescue Errno::ENOENT
+    installed.first
+  end
+
+  def self.select!(id)
+    entry = find(id)
+    raise ArgumentError, "Unknown model." unless entry
+    raise ArgumentError, "Model is not installed." unless model_path(entry).file?
+
+    EmberVault::PortableStorage.prepare!
+    File.write(active_model_path, entry.id)
+    entry
+  end
+
+  def self.active_model_path
+    EmberVault::PortableStorage.path("settings", "active-model")
+  end
+
   def self.default
-    entries.find { |entry| entry.status == "default" } || entries.first
+    active || entries.find { |entry| entry.status == "default" } || entries.first
   end
 
   def self.model_path(entry)
