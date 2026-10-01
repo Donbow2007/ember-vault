@@ -19,6 +19,8 @@ class LocalAiServer
   end
 
   def healthy?
+    return false unless process_alive?(stored_pid)
+
     response = Net::HTTP.start(HOST, PORT.to_i, open_timeout: 1, read_timeout: 2) { |http| http.get("/health") }
     response.is_a?(Net::HTTPSuccess)
   rescue SystemCallError, Timeout::Error
