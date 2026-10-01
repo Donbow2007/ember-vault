@@ -1,5 +1,5 @@
 <% content_for :title, "Models — Ember Vault" %>
-<main class="dashboard models-page" data-controller="model-install">
+<main class="dashboard models-page">
   <div class="section-heading">
     <div><p class="section-index">MODELS // LOCAL AI</p><h1>Ember models</h1></div>
     <p class="section-note">One installed model is enough. Ember runs it locally and does not send questions to a cloud AI service.</p>
@@ -16,8 +16,7 @@
           <% if installed %>
             <%= button_to "REMOVE", model_path(model.id), method: :delete, class: "button button-ghost" %>
           <% elsif model.download_url.present? %>
-            <button type="button" class="button button-light model-install-button" data-install-url="<%= install_stream_model_path(model.id) %>">INSTALL</button>
-            <div class="model-progress" hidden><div class="model-progress-track"><i></i></div><span>0%</span></div>
+            <%= button_to "INSTALL", install_model_path(model.id), class: "button button-light" %>
           <% else %>
             <span>DOWNLOAD SOURCE NOT YET VERIFIED</span>
           <% end %>
