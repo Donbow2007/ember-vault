@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: app/.ruby-version
+          ruby-version: 3.2.3
           bundler-cache: true
           working-directory: app
       - run: bin/brakeman --no-pager --except EOLRails
@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: app/.ruby-version
+          ruby-version: 3.2.3
           bundler-cache: true
           working-directory: app
       - run: bin/importmap audit
@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: app/.ruby-version
+          ruby-version: 3.2.3
           bundler-cache: true
           working-directory: app
       - run: bin/rubocop -f github
@@ -52,7 +52,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: app/.ruby-version
+          ruby-version: 3.2.3
           bundler-cache: true
           working-directory: app
       - env:
