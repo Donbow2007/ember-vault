@@ -9,5 +9,5 @@
     <%= link_to "Models", models_path, class: ("active" if controller_name == "models") %>
     <%= link_to "Settings", updates_path, class: ("active" if controller_name.in?(%w[updates settings])) %>
   </nav>
-  <div class="network-state"><span></span> OFFLINE READY</div>
+  <div class="network-state <%= @offline_ready ? "ready" : "not-ready" %>"><span></span> <%= @offline_ready ? "OFFLINE READY" : "SETUP NEEDED" %></div>
 </header>
