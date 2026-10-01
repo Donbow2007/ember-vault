@@ -5,7 +5,7 @@ class AssistantController < ApplicationController
       @question = @response.question
     else
       @question = params[:question].to_s.strip
-      return answer_and_redirect(@question) if @question.present?
+      answer_and_redirect(@question) if @question.present?
     end
   end
 

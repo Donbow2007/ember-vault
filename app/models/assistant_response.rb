@@ -1,7 +1,6 @@
 class AssistantResponse < ApplicationRecord
   STATUSES = %w[queued running cancel_requested cancelled complete failed].freeze
 
-
   validates :question, presence: true, length: { maximum: 500 }
   validates :status, inclusion: { in: STATUSES }
 
@@ -32,5 +31,4 @@ class AssistantResponse < ApplicationRecord
   def failed?
     status == "failed"
   end
-
 end

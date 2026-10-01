@@ -21,8 +21,8 @@ module EmberVault
     def setup
       ensure_directories
       ensure_secret
-      run!(%w[bundle install]) unless bundled_runtime? || system("bundle", "check", chdir: APP_ROOT)
-      run!(%w[npm ci --prefix vendor/map_indexer]) unless bundled_runtime?
+      run!(%w[bundle install], env: bundle_env) unless bundled_runtime? || bundle_ready?
+      run!(%w[npm ci --prefix vendor/map_indexer], env: bundle_env) unless bundled_runtime?
       ensure_local_ai_runtime unless bundled_runtime? || ENV["EMBER_VAULT_SKIP_LOCAL_AI_RUNTIME"] == "1"
       run!(%w[bin/rails db:prepare], env: production_env)
       run!(%w[bin/rails assets:precompile], env: production_env.merge("SECRET_KEY_BASE_DUMMY" => "1")) unless bundled_runtime?
@@ -32,6 +32,7 @@ module EmberVault
     def run_foreground
       ensure_directories
       ensure_secret
+      run!(%w[bin/rails db:prepare], env: production_env)
       Dir.chdir(APP_ROOT) do
         exec(production_env, "bin/rails", "server", "-e", "production", "-b", bind_address, "-p", port)
       end
@@ -42,6 +43,7 @@ module EmberVault
 
       ensure_directories
       ensure_secret
+      run!(%w[bin/rails db:prepare], env: production_env)
       log = File.open(LOG_PATH, "a")
       options = Gem.win_platform? ? { new_pgroup: true } : { pgroup: true }
       pid = Process.spawn(production_env, "bin/rails", "server", "-e", "production", "-b", bind_address, "-p", port,
@@ -157,6 +159,28 @@ module EmberVault
       ENV["EMBER_VAULT_BUNDLED_RUNTIME"] == "1"
     end
 
+    def bundle_path
+      configured = ENV["BUNDLE_PATH"]
+      return configured unless configured.to_s.empty?
+
+      configured = ENV["GEM_HOME"]
+      return configured unless configured.to_s.empty?
+
+      File.join(APP_ROOT, "vendor", "bundle")
+    end
+
+    def bundle_env
+      {
+        "BUNDLE_PATH" => bundle_path,
+        "GEM_HOME" => bundle_path,
+        "GEM_PATH" => bundle_path
+      }
+    end
+
+    def bundle_ready?
+      system(bundle_env, "bundle", "check", chdir: APP_ROOT, exception: false)
+    end
+
     def ensure_directories
       %w[models maps database settings logs backups tmp].each { |directory| FileUtils.mkdir_p(File.join(STORAGE_ROOT, directory)) }
     end
@@ -194,7 +218,7 @@ module EmberVault
     end
 
     def production_env
-      {
+      bundle_env.merge(
         "RAILS_ENV" => "production",
         "RACK_ENV" => "production",
         "SECRET_KEY_BASE" => File.read(SECRET_PATH).strip,
@@ -204,18 +228,18 @@ module EmberVault
         "RAILS_MAX_THREADS" => ENV.fetch("RAILS_MAX_THREADS", "2"),
         "JOB_CONCURRENCY" => ENV.fetch("JOB_CONCURRENCY", "1"),
         "PORT" => port
-      }
+      )
     end
 
     def run!(command, env: {})
       say "==> #{command.join(" ")}"
-      system(env, *command, chdir: APP_ROOT, exception: false).tap do |success|
+      system(bundle_env.merge(env), *command, chdir: APP_ROOT, exception: false).tap do |success|
         raise "Command failed: #{command.join(" ")}" unless success
       end
     end
 
     def capture!(command)
-      output, status = Open3.capture2e(*command, chdir: APP_ROOT)
+      output, status = Open3.capture2e(bundle_env, *command, chdir: APP_ROOT)
       raise "Command failed: #{command.join(" ")}\n#{output}" unless status.success?
       output
     end
