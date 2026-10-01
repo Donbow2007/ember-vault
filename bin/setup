@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 require "fileutils"
+require "socket"
 
 APP_ROOT = File.expand_path("..", __dir__)
 BUNDLE_PATH = File.join(APP_ROOT, "vendor", "bundle")
@@ -21,7 +22,7 @@ FileUtils.chdir APP_ROOT do
   puts "== Installing dependencies =="
   system(BUNDLE_ENV, "bundle", "check") || system!("bundle", "install")
 
-  puts "\\n== Installing map indexer dependencies =="
+  puts "\n== Installing map indexer dependencies =="
   system! "npm", "install", "--prefix", "vendor/map_indexer", "--no-audit", "--no-fund"
 
   puts "\n== Preparing database =="
