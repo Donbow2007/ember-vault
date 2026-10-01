@@ -5,7 +5,7 @@ require "open3"
 
 class LocalAiServer
   HOST = "127.0.0.1"
-  PORT = ENV.fetch("EMBER_VAULT_AI_PORT", "8081")
+  PORT = ENV.fetch("EMBER_VAULT_AI_PORT", "8082")
   START_TIMEOUT = ENV.fetch("EMBER_VAULT_AI_START_TIMEOUT", "45").to_i
 
   def initialize(entry:)
