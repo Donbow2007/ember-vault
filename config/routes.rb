@@ -16,6 +16,12 @@ Rails.application.routes.draw do
   resources :models, only: [ :index, :destroy ] do
     post :install, on: :member
     get :install_stream, on: :member
+    post :select, on: :member
+    collection do
+      post :start_server
+      post :stop_server
+      post :shutdown
+    end
   end
   resources :maps, only: [ :index, :show ] do
     get :archive, on: :member
