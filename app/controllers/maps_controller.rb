@@ -1,20 +1,63 @@
 class MapsController < ApplicationController
+  skip_before_action :require_onboarding, only: [ :index, :install, :status ]
+
   def index
     MapPackDiscovery.new.call
-    @maps = MapPack.includes(:map_features).order(:title)
+    @catalog = MapCatalog.entries
+    @maps = MapPack.order(:title)
+    @packs_by_catalog_id = @maps.index_by(&:catalog_id)
+  end
+
+  def status
+    @maps = MapPack.order(:title)
+    render json: @maps.map { |map| {
+      id: map.id, catalog_id: map.catalog_id, status: map.status, progress: map.progress,
+      downloaded_bytes: map.downloaded_bytes, expected_bytes: map.expected_bytes,
+      error_message: map.error_message, url: (map.installed? ? map_path(map) : nil)
+    } }
+  end
+
+  def install
+    entry = MapCatalog.find(params[:catalog_id])
+    pack = MapPack.find_or_initialize_by(catalog_id: entry.id)
+    if pack.persisted? && pack.status.in?(%w[queued downloading complete])
+      return redirect_to maps_path, notice: "#{entry.title} is already installed or downloading."
+    end
+
+    pack.assign_attributes(
+      title: entry.title,
+      stored_path: File.join("maps", entry.id, "#{entry.id}.pmtiles"),
+      format: "pmtiles", region: entry.region, catalog_version: entry.version,
+      source_url: entry.url, expected_bytes: entry.size_mb.megabytes,
+      downloaded_bytes: 0, status: "queued", error_message: nil
+    )
+    pack.save!
+    MapDownloadJob.perform_later(pack)
+    redirect_to maps_path, notice: "#{entry.title} added to the map download queue."
+  end
+
+  def destroy
+    pack = map_pack
+    title = pack.title
+    directory = pack.pack_path.dirname
+    pack.destroy!
+    FileUtils.rm_rf(directory) if directory.to_s.start_with?("#{EmberVault::PortableStorage.path("maps").expand_path}#{File::SEPARATOR}")
+    redirect_to maps_path, notice: "#{title} removed."
   end
 
   def show
     @map_pack = map_pack
+    return redirect_to(maps_path, alert: "That map is not installed.") unless @map_pack.installed?
+
     @selected_feature = @map_pack.map_features.find_by(id: params[:feature_id])
   end
 
   def archive
     pack = map_pack
     path = pack.archive_path
-    if File.file?(path)
+    if pack.installed?
       response.headers["Accept-Ranges"] = "bytes"
-    response.headers["Cache-Control"] = "private, max-age=3600"
+      response.headers["Cache-Control"] = "private, max-age=3600"
       if request.headers["Range"].present?
         serve_range(path, request.headers["Range"])
       else
