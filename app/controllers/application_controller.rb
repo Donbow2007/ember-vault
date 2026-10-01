@@ -9,6 +9,7 @@ class ApplicationController < ActionController::Base
   def set_interface_state
     @theme = cookies[:theme].presence || "dark"
     @theme = "dark" unless @theme.in?(%w[dark light])
+    @offline_ready = ModelCatalog.installed.any? && MapPack.exists?
   end
 
   def require_onboarding
