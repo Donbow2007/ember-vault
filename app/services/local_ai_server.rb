@@ -15,9 +15,7 @@ class LocalAiServer
   def ensure_running!
     return true if healthy?
 
-    stop_stale_process
-    start
-    wait_until_ready
+    start!
   end
 
   def healthy?
@@ -25,6 +23,40 @@ class LocalAiServer
     response.is_a?(Net::HTTPSuccess)
   rescue SystemCallError, Timeout::Error
     false
+  end
+
+  def running?
+    healthy?
+  end
+
+  def start!
+    return true if healthy?
+
+    stop!
+    start
+    wait_until_ready
+  end
+
+  def stop!
+    pid = stored_pid
+    if process_alive?(pid)
+      Process.kill(Gem.win_platform? ? "KILL" : "TERM", pid)
+      50.times do
+        break unless process_alive?(pid)
+        sleep 0.1
+      end
+      Process.kill("KILL", pid) if process_alive?(pid)
+    end
+    FileUtils.rm_f(pid_path)
+    true
+  rescue Errno::ESRCH
+    FileUtils.rm_f(pid_path)
+    true
+  end
+
+  def restart!
+    stop!
+    start!
   end
 
   def endpoint
