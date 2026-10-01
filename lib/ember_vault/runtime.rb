@@ -2,6 +2,7 @@ require "fileutils"
 require "net/http"
 require "open3"
 require "securerandom"
+require "socket"
 require "time"
 
 module EmberVault
@@ -12,6 +13,7 @@ module EmberVault
     LOG_PATH = File.join(STORAGE_ROOT, "ember-vault.log")
     SECRET_PATH = File.join(STORAGE_ROOT, ".secret_key_base")
     UPDATE_LOCK_PATH = File.join(STORAGE_ROOT, ".update.lock")
+    WEB_PORTS = [ 3000, 3100, 3200, 3300, 3400 ].freeze
 
     def initialize(output: $stdout)
       @output = output
@@ -282,7 +284,18 @@ module EmberVault
     end
 
     def port
-      ENV.fetch("PORT", "3000")
+      return ENV["PORT"] if ENV["PORT"].to_s != ""
+
+      @port ||= WEB_PORTS.find { |candidate| port_available?(candidate) }&.to_s ||
+        raise("No available Ember Vault web port found (checked #{WEB_PORTS.join(", ")}).")
+    end
+
+    def port_available?(candidate)
+      server = TCPServer.new("127.0.0.1", candidate)
+      server.close
+      true
+    rescue Errno::EADDRINUSE, Errno::EACCES
+      false
     end
 
     def bind_address
