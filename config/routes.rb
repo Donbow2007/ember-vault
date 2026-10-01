@@ -25,7 +25,11 @@ Rails.application.routes.draw do
       post :shutdown
     end
   end
-  resources :maps, only: [ :index, :show ] do
+  resources :maps, only: [ :index, :show, :destroy ] do
+    collection do
+      post :install
+      get :status
+    end
     get :archive, on: :member
     get :search, on: :member
     post :reindex, on: :member
