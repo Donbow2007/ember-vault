@@ -4,6 +4,9 @@ class UpdatesController < ApplicationController
   def show
     @update = ApplicationUpdate.new
     @status = @update.status
+    @installed_models = ModelCatalog.installed
+    @active_model = ModelCatalog.active
+    @ai_running = @active_model.present? && LocalAiServer.new(entry: @active_model).running?
     render :index
   end
 
@@ -22,6 +25,27 @@ class UpdatesController < ApplicationController
     ApplicationUpdate.new.write_status(state: "queued", message: "Update queued. Keep this device powered on.")
     ApplicationUpdateJob.perform_later
     redirect_to updates_path, notice: "Update queued. Refresh this page to see its status."
+  end
+
+  def select_model
+    previous = ModelCatalog.active
+    was_running = previous.present? && LocalAiServer.new(entry: previous).running?
+    LocalAiServer.new(entry: previous).stop! if was_running
+    model = ModelCatalog.select!(params[:model_id])
+    LocalAiServer.new(entry: model).start! if was_running
+    redirect_to updates_path, notice: "#{model.display_name} selected#{was_running ? " and AI server restarted." : "."}"
+  rescue StandardError => error
+    redirect_to updates_path, alert: "Could not select model: #{error.message}"
+  end
+
+  def restart_ai
+    model = ModelCatalog.active
+    return redirect_to(updates_path, alert: "Install a model first.") unless model
+
+    LocalAiServer.new(entry: model).restart!
+    redirect_to updates_path, notice: "AI server restarted with #{model.display_name}."
+  rescue StandardError => error
+    redirect_to updates_path, alert: "AI server failed to restart: #{error.message}"
   end
 
   private
