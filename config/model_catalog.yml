@@ -21,7 +21,7 @@ models:
     upstream_filename: llama-3.2-1b.Q4_K_M.gguf
     filename: survival-llama-1b.gguf
     quantization: Q4_K_M
-    download_url: https://huggingface.co/SlayThat/NikiAI-Survival/resolve/main/llama-3.2-1b.Q4_K_M.gguf?download=true
+    download_url: https://huggingface.co/SlayThat/NikiAI-Survival/resolve/main/llama-3.2-1b.Q4_K_M.gguf
     license: llama3.2
     status: benchmark_candidate
     runtime:
