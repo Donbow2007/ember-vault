@@ -41,7 +41,7 @@
             <h2><%= entry.title %></h2>
             <p><%= entry.description %></p>
             <% if pack&.installed? %>
-              <%= link_to "OPEN REGION →", map_path(pack) %>
+              <%= link_to "VIEW REGION", map_path(pack), class: "button button-light atlas-view-button" %>
             <% elsif pack&.status.in?(%w[queued downloading]) %>
               <div class="map-download-progress" data-map-progress>
                 <div><i style="width:<%= pack.progress %>%"></i></div>
