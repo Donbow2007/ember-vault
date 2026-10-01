@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_09_30_220000) do
+ActiveRecord::Schema[8.0].define(version: 2026_10_01_160000) do
   create_table "assistant_responses", force: :cascade do |t|
     t.text "question", null: false
     t.text "answer"
@@ -28,6 +28,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_09_30_220000) do
     t.string "title", null: false
     t.string "stored_path", null: false
     t.integer "byte_size", default: 0, null: false
+    t.string "catalog_id"
+    t.string "catalog_version"
+    t.string "source_url"
+    t.integer "expected_bytes", default: 0, null: false
+    t.integer "downloaded_bytes", default: 0, null: false
+    t.string "status", default: "complete", null: false
+    t.text "error_message"
     t.string "format"
     t.string "region"
     t.string "version"
