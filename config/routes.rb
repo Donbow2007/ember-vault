@@ -15,6 +15,7 @@ Rails.application.routes.draw do
   end
   resources :models, only: [ :index, :destroy ] do
     post :install, on: :member
+    get :install_stream, on: :member
   end
   resources :maps, only: [ :index, :show ] do
     get :archive, on: :member
