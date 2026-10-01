@@ -21,6 +21,9 @@ FileUtils.chdir APP_ROOT do
   puts "== Installing dependencies =="
   system(BUNDLE_ENV, "bundle", "check") || system!("bundle", "install")
 
+  puts "\\n== Installing map indexer dependencies =="
+  system! "npm", "install", "--prefix", "vendor/map_indexer", "--no-audit", "--no-fund"
+
   puts "\n== Preparing database =="
   system! "bin/rails", "db:prepare"
 
