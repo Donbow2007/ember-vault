@@ -28,14 +28,16 @@ jobs:
       - uses: actions/checkout@v6
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: .ruby-version
+          ruby-version: app/.ruby-version
           bundler-cache: true
+          working-directory: app
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
 
       - name: Prepare application
         shell: bash
+        working-directory: app
         run: |
           npm ci --prefix vendor/map_indexer
           bundle config set --local path vendor/bundle
@@ -44,6 +46,7 @@ jobs:
 
       - name: Build llama.cpp
         shell: bash
+        working-directory: app
         run: |
           git clone --depth 1 https://github.com/ggml-org/llama.cpp.git build-llama
           cmake -S build-llama -B build-llama/out -DGGML_NATIVE=OFF -DGGML_BUILD_TESTS=OFF -DGGML_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_TOOLS=ON
@@ -51,27 +54,32 @@ jobs:
 
       - name: Build portable tree
         shell: bash
+        working-directory: app
         run: ruby script/build_portable.rb ${{ matrix.platform }} dist/ember-vault-${{ matrix.platform }}
 
       - name: Copy llama runtime
         shell: bash
+        working-directory: app
         run: |
           mkdir -p dist/ember-vault-${{ matrix.platform }}/runtime/llama
           find build-llama/out -type f \( -name 'llama-server' -o -name 'llama-server.exe' -o -name '*.dll' -o -name '*.dylib' -o -name 'libggml*.so*' -o -name 'libllama.so*' \) -exec cp {} dist/ember-vault-${{ matrix.platform }}/runtime/llama/ \;
 
       - name: Validate portable bundle
         shell: bash
+        working-directory: app
         run: ruby script/validate_portable.rb dist/ember-vault-${{ matrix.platform }}
 
       - name: Archive Unix
         if: runner.os != 'Windows'
         shell: bash
-        run: tar -czf ember-vault-${{ matrix.platform }}.tar.gz -C dist ember-vault-${{ matrix.platform }}
+        working-directory: app
+        run: tar -czf ../ember-vault-${{ matrix.platform }}.tar.gz -C dist ember-vault-${{ matrix.platform }}
 
       - name: Archive Windows
         if: runner.os == 'Windows'
         shell: pwsh
-        run: Compress-Archive -Path "dist/ember-vault-${{ matrix.platform }}/*" -DestinationPath "ember-vault-${{ matrix.platform }}.zip"
+        working-directory: app
+        run: Compress-Archive -Path "dist/ember-vault-${{ matrix.platform }}/*" -DestinationPath "../ember-vault-${{ matrix.platform }}.zip"
 
       - uses: actions/upload-artifact@v5
         with:
