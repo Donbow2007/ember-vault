@@ -1,0 +1,16 @@
+<section id="assistant-response-<%= response.id %>" class="assistant-conversation assistant-answer" aria-live="polite"
+  <% if response.pending? %>data-controller="assistant-response" data-assistant-response-url-value="<%= assistant_response_path(response) %>"<% end %>>
+  <div class="assistant-response-heading">
+    <div><p class="section-index">EMBER // <%= response.status.upcase %></p><h2><%= response.pending? ? "Thinking locally…" : (response.failed? || response.cancelled? ? "Response interrupted." : "Field guidance.") %></h2></div>
+    <b><%= response.response_mode.to_s.upcase.tr("-", " ") %></b>
+  </div>
+  <% if response.pending? %>
+    <div class="assistant-pending"><i></i><p>The local model is working entirely offline.</p><%= button_to "STOP RESPONSE", cancel_assistant_response_path(response), class: "assistant-stop-button" unless response.cancel_requested? %></div>
+  <% elsif response.cancelled? %>
+    <div class="assistant-no-answer"><p>This response was stopped.</p><%= link_to "ASK AGAIN", assistant_path(question: response.question), class: "button button-light" %></div>
+  <% elsif response.failed? %>
+    <div class="assistant-no-answer"><p><%= response.error_message.presence || "The local model could not finish this response." %></p><%= link_to "TRY AGAIN", assistant_path(question: response.question), class: "button button-light" %></div>
+  <% else %>
+    <div class="assistant-response-copy"><div class="assistant-generated-answer"><%= simple_format(response.answer) %></div></div>
+  <% end %>
+</section>

@@ -1,0 +1,88 @@
+<% content_for :title, "World Atlas — Ember Vault" %>
+<div class="atlas-index">
+  <main>
+    <div class="wizard-intro">
+      <p class="section-index">ATLAS // OFFLINE MAPS</p>
+      <h1>Navigate beyond the signal.</h1>
+      <p>Download the regions you need while online. Installed maps, search, and GPS continue working offline.</p>
+    </div>
+
+    <% installed = @maps.select(&:installed?) %>
+    <section class="atlas-installed">
+      <div class="list-heading"><p class="section-index">INSTALLED // <%= installed.count %></p></div>
+      <div class="atlas-region-grid">
+        <% installed.each do |map| %>
+          <article class="atlas-region-card">
+            <small>PMTILES // <%= number_to_human_size(map.byte_size) %></small>
+            <h2><%= map.title %></h2>
+            <p><%= pluralize(map.map_features.count, "INDEXED NAME") %></p>
+            <%= link_to "OPEN REGION →", map_path(map), class: "button button-light atlas-open-region" %>
+            <div class="atlas-pack-actions">
+              <%= button_to "REINDEX", reindex_map_path(map), class: "button button-ghost" %>
+              <%= button_to "REMOVE", map_path(map), method: :delete, class: "button button-ghost", form: { data: { turbo_confirm: "Remove #{map.title} from this device? This permanently deletes the downloaded map and its local index." } } %>
+            </div>
+          </article>
+        <% end %>
+        <% if installed.empty? %>
+          <div class="empty-archive"><b>NO MAPS SECURED</b><p>Choose a state below to store it locally.</p></div>
+        <% end %>
+      </div>
+    </section>
+
+    <section class="atlas-catalog" id="install-maps">
+      <div class="list-heading"><p class="section-index">AVAILABLE // UNITED STATES</p></div>
+      <div class="atlas-region-grid">
+        <% @catalog.each do |entry| %>
+          <% pack = @packs_by_catalog_id[entry.id] %>
+          <article class="atlas-region-card" data-map-catalog-id="<%= entry.id %>">
+            <small><%= entry.region.to_s.upcase %> // ~<%= entry.size_mb %> MB</small>
+            <h2><%= entry.title %></h2>
+            <p><%= entry.description %></p>
+            <% if pack&.installed? %>
+              <%= link_to "VIEW REGION", map_path(pack), class: "button button-light atlas-view-button" %>
+            <% elsif pack&.status.in?(%w[queued downloading]) %>
+              <div class="map-download-progress" data-map-progress>
+                <div><i style="width:<%= pack.progress %>%"></i></div>
+                <span><%= pack.status.upcase %> // <%= pack.progress %>%</span>
+              </div>
+            <% elsif pack&.status == "failed" %>
+              <p class="atlas-error">FAILED // <%= pack.error_message %></p>
+              <%= button_to "RETRY DOWNLOAD", install_maps_path(catalog_id: entry.id), class: "button button-light" %>
+            <% else %>
+              <%= button_to "DOWNLOAD MAP", install_maps_path(catalog_id: entry.id), class: "button button-light" %>
+            <% end %>
+          </article>
+        <% end %>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(() => {
+  const active = document.querySelector("[data-map-progress]")
+  if (!active) return
+  const refresh = async () => {
+    try {
+      const response = await fetch("<%= status_maps_path %>", { headers: { Accept: "application/json" } })
+      const maps = await response.json()
+      let stillActive = false
+      maps.forEach(map => {
+        const card = document.querySelector(`[data-map-catalog-id="${map.catalog_id}"]`)
+        if (!card) return
+        const progress = card.querySelector("[data-map-progress]")
+        if (progress && ["queued", "downloading"].includes(map.status)) {
+          stillActive = true
+          progress.querySelector("i").style.width = `${map.progress}%`
+          progress.querySelector("span").textContent = `${map.status.toUpperCase()} // ${map.progress}%`
+        }
+      })
+      if (stillActive) setTimeout(refresh, 1500)
+      else window.location.reload()
+    } catch (_) {
+      setTimeout(refresh, 3000)
+    }
+  }
+  setTimeout(refresh, 1000)
+})()
+</script>

@@ -1,0 +1,13 @@
+<header class="topbar">
+  <%= link_to root_path, class: "brand", aria: { label: "Ember Vault home" } do %>
+    <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+    <span class="brand-type"><strong>EMBER</strong><b>VAULT</b></span>
+  <% end %>
+  <nav class="primary-nav" aria-label="Primary navigation">
+    <%= link_to "Ember", assistant_path, class: ("active" if controller_name == "assistant") %>
+    <%= link_to "Maps", maps_path, class: ("active" if controller_name == "maps") %>
+    <%= link_to "Models", models_path, class: ("active" if controller_name == "models") %>
+    <%= link_to "Settings", updates_path, class: ("active" if controller_name.in?(%w[updates settings])) %>
+  </nav>
+  <div class="network-state <%= @offline_ready ? "ready" : "not-ready" %>"><span></span> <%= @offline_ready ? "OFFLINE READY" : "SETUP NEEDED" %></div>
+</header>

@@ -1,0 +1,31 @@
+EMBER VAULT — START HERE
+=========================
+
+Ember Vault is a portable, offline-first survival AI and map application.
+
+The actual application is inside the "app" folder.
+
+QUICK TEST FROM A USB DRIVE (LINUX)
+-----------------------------------
+1. Open a terminal in this folder.
+2. Run:
+     cd app
+3. Run the setup:
+     bin/ember-vault setup
+4. Start Ember Vault:
+     bin/ember-vault run
+5. Open the local address printed in the terminal.
+
+For a normal Linux installation using the systemd service:
+     cd app
+     ./script/install/linux.sh
+
+Application documentation is in:
+     app/docs/
+
+IMPORTANT
+---------
+Models, offline maps, databases, and settings are local data. Ember Vault is
+designed to keep them separate from source updates.
+
+No cloud AI subscription is required.

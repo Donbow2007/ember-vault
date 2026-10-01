@@ -1,0 +1,44 @@
+models:
+  survival-qwen-05b:
+    role: survival
+    display_name: SurvivalAI Qwen 2.5 0.5B
+    repository: wattsonandme/survival-qwen-0.5b
+    upstream_filename: v3-survival-qwen-0.5b-q4_k_m.gguf
+    filename: survival-qwen-05b.gguf
+    quantization: Q4_K_M
+    download_url: https://huggingface.co/wattsonandme/survival-qwen-0.5b/resolve/main/v3-survival-qwen-0.5b-q4_k_m.gguf?download=true
+    approximate_bytes: 398458880
+    license: apache-2.0
+    status: benchmark_candidate
+    runtime:
+      context: 2048
+      temperature: 0.7
+      repeat_penalty: 1.15
+  survival-llama-1b:
+    role: survival
+    display_name: NikiAI Survival Llama 3.2 1B
+    repository: SlayThat/NikiAI-Survival
+    upstream_filename: llama-3.2-1b.Q4_K_M.gguf
+    filename: survival-llama-1b.gguf
+    quantization: Q4_K_M
+    download_url: https://huggingface.co/SlayThat/NikiAI-Survival/resolve/main/llama-3.2-1b.Q4_K_M.gguf
+    license: llama3.2
+    status: benchmark_candidate
+    runtime:
+      context: 2048
+      temperature: 0.5
+      repeat_penalty: 1.1
+  survival-gemma-1b:
+    role: survival
+    display_name: Survival AI Gemma 1B
+    repository: Cholarajarp/survival-ai
+    upstream_filename: survival_safe_Q4.gguf
+    filename: survival-gemma-1b.gguf
+    quantization: Q4
+    download_url: https://huggingface.co/Cholarajarp/survival-ai/resolve/main/survival_safe_Q4.gguf?download=true
+    approximate_bytes: 806354944
+    status: benchmark_candidate
+    runtime:
+      context: 2048
+      temperature: 0.6
+      repeat_penalty: 1.1

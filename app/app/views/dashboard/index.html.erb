@@ -1,0 +1,18 @@
+<% content_for :title, "Ember Vault — Offline AI & Maps" %>
+<div class="shell">
+  <main>
+    <section class="hero">
+      <div class="hero-image" aria-hidden="true"></div><div class="hero-grid" aria-hidden="true"></div>
+      <div class="hero-content">
+        <p class="eyebrow"><span>EV—02</span> OFFLINE READY</p>
+        <h1>Knowledge and navigation.<br><em>Without the grid.</em></h1>
+        <p class="hero-copy">Ember Vault keeps a local AI model and offline maps on your portable drive. No cloud connection is required to use either one.</p>
+        <div class="hero-actions"><%= link_to "ASK EMBER", assistant_path, class: "button button-light" %><%= link_to "OPEN MAPS", maps_path, class: "button button-ghost" %></div>
+      </div>
+    </section>
+    <section class="system-strip" id="system">
+      <div class="metric"><span>PORTABLE STORAGE</span><strong><%= number_to_human_size(@disk[:available]) %> FREE</strong><div><i style="width: <%= @disk[:percent] %>%"></i></div></div>
+      <div class="metric system-theme"><span>DISPLAY MODE</span><strong><%= @theme.upcase %></strong><div class="system-theme-actions"><%= button_to "DARK", theme_setting_path, method: :patch, params: { theme: "dark" }, class: ("selected" if @theme == "dark") %><%= button_to "LIGHT", theme_setting_path, method: :patch, params: { theme: "light" }, class: ("selected" if @theme == "light") %></div></div>
+    </section>
+  </main>
+</div>

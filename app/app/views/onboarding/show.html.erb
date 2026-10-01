@@ -1,0 +1,35 @@
+<% content_for :title, "Set Up Ember Vault" %>
+<main class="onboarding-shell">
+  <header class="onboarding-header">
+    <p class="section-index">FIRST RUN // THREE STEPS</p>
+    <h1>Get ready.<br><span>Stay offline.</span></h1>
+    <p>Ember Vault keeps its AI models, maps, database, settings and logs on this portable drive. You only need an internet connection while adding models or map packs.</p>
+  </header>
+
+  <section class="onboarding-steps">
+    <article>
+      <b>01</b><span>STORAGE</span><h2>Portable drive</h2>
+      <p><%= @data_root %></p>
+      <strong>READY</strong>
+    </article>
+    <article>
+      <b>02</b><span>EMBER</span><h2>Choose a model</h2>
+      <% if @installed.any? %>
+        <p><%= @installed.first.display_name %> is installed and ready.</p><strong>READY</strong>
+      <% else %>
+        <p>Install one local survival model before using Ember. The recommended candidate appears first.</p>
+        <%= link_to "OPEN MODELS →", models_path, class: "button button-ghost" %>
+      <% end %>
+    </article>
+    <article>
+      <b>03</b><span>MAPS</span><h2>Optional maps</h2>
+      <p><%= @map_count.zero? ? "No map packs yet. You can add them now or later." : pluralize(@map_count, "map pack") + " discovered." %></p>
+      <%= link_to "OPEN MAPS →", maps_path, class: "button button-ghost" %>
+    </article>
+  </section>
+
+  <div class="onboarding-finish">
+    <p>Models are required for Ember. Maps are optional and can be copied onto the drive at any time.</p>
+    <%= button_to "FINISH SETUP", complete_onboarding_path, class: "button button-light" %>
+  </div>
+</main>
