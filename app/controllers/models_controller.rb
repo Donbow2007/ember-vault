@@ -38,10 +38,13 @@ class ModelsController < ApplicationController
   end
 
   def select
+    previous = ModelCatalog.active
+    was_running = previous.present? && LocalAiServer.new(entry: previous).running?
+    LocalAiServer.new(entry: previous).stop! if was_running
+
     model = ModelCatalog.select!(params[:id])
-    server = LocalAiServer.new(entry: model)
-    server.restart! if server.running?
-    redirect_to models_path, notice: "#{model.display_name} selected."
+    LocalAiServer.new(entry: model).start! if was_running
+    redirect_to models_path, notice: "#{model.display_name} selected#{was_running ? " and AI server restarted." : "."}"
   rescue StandardError => error
     redirect_to models_path, alert: "Could not select model: #{error.message}"
   end
