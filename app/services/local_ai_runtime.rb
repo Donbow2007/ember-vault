@@ -16,7 +16,7 @@ class LocalAiRuntime
 
   def initialize(profile: nil)
     @entry = ModelCatalog.find(profile.presence || ENV["EMBER_VAULT_AI_PROFILE"].presence) ||
-      ModelCatalog.installed.first || ModelCatalog.entries.first
+      ModelCatalog.active || ModelCatalog.entries.first
     @profile = @entry&.id
   end
 
