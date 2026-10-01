@@ -34,13 +34,18 @@ class ModelInstaller
     raise Error, "Too many model download redirects" if redirects > 5
 
     Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: 10, read_timeout: 120) do |http|
-      response = http.get(uri.request_uri)
-      if response.is_a?(Net::HTTPRedirection)
-        return download(URI.join(uri, response["location"]), destination, redirects + 1)
-      end
-      raise Error, "Model download failed with HTTP #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+      request = Net::HTTP::Get.new(uri.request_uri)
 
-      File.open(destination, "wb") { |file| response.read_body { |chunk| file.write(chunk) } }
+      http.request(request) do |response|
+        if response.is_a?(Net::HTTPRedirection)
+          return download(URI.join(uri, response["location"]), destination, redirects + 1)
+        end
+        raise Error, "Model download failed with HTTP #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+
+        File.open(destination, "wb") do |file|
+          response.read_body { |chunk| file.write(chunk) }
+        end
+      end
     end
   end
 
