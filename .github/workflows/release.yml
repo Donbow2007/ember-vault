@@ -81,7 +81,7 @@ jobs:
         working-directory: app
         run: Compress-Archive -Path "dist/ember-vault-${{ matrix.platform }}/*" -DestinationPath "../ember-vault-${{ matrix.platform }}.zip"
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: ember-vault-${{ matrix.platform }}
           path: |
