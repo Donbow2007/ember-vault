@@ -12,6 +12,8 @@ Rails.application.routes.draw do
   resource :updates, only: :show, controller: "updates" do
     post :check
     post :install
+    post :select_model
+    post :restart_ai
   end
   resources :models, only: [ :index, :destroy ] do
     post :install, on: :member
