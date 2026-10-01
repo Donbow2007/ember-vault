@@ -8,5 +8,23 @@
     <div class="update-state"><span>UPDATE STATUS</span><strong><%= (@status[:state] || "NOT CHECKED").upcase %></strong><p><%= @status[:message] || "Connect during setup or maintenance to check GitHub for a newer release." %></p><small><%= Time.zone.parse(@status[:updated_at]).strftime("%Y-%m-%d %H:%M:%S") if @status[:updated_at].present? %></small></div>
     <div class="update-controls"><%= button_to "CHECK GITHUB", check_updates_path, class: "button button-ghost" %><%= button_to "BACK UP + INSTALL", install_updates_path, class: "button button-light", disabled: @status[:state] == "running" %></div>
   </section>
+  <section class="runtime-controls">
+    <div>
+      <p class="section-index">LOCAL AI // SETTINGS</p>
+      <h3>AI model</h3>
+      <p>Choose which installed model Ember uses. Current server: <strong><%= @ai_running ? "RUNNING" : "STOPPED" %></strong></p>
+    </div>
+    <div class="runtime-actions">
+      <% if @installed_models.any? %>
+        <%= form_with url: select_model_updates_path, method: :post, class: "model-selector" do |form| %>
+          <%= form.select :model_id, options_from_collection_for_select(@installed_models, :id, :display_name, @active_model&.id), {}, class: "model-select" %>
+          <%= form.submit "SELECT MODEL", class: "button button-light" %>
+        <% end %>
+        <%= button_to "RESTART AI SERVER", restart_ai_updates_path, class: "button button-ghost" %>
+      <% else %>
+        <span>INSTALL A MODEL FIRST</span>
+      <% end %>
+    </div>
+  </section>
   <aside class="update-warning"><b>POWER SAFETY</b><p>Do not disconnect power while an update is running. Models, map packs, local indexes, databases and settings are stored outside Git and are never replaced by the updater.</p></aside>
 </main>
