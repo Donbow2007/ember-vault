@@ -26,5 +26,15 @@
       <% end %>
     </div>
   </section>
+  <section class="runtime-controls">
+    <div>
+      <p class="section-index">OFFLINE MAPS // SETTINGS</p>
+      <h3>Map packs</h3>
+      <p>Download and manage offline state maps stored with Ember Vault.</p>
+    </div>
+    <div class="runtime-actions">
+      <%= link_to "INSTALL / MANAGE MAPS", maps_path(anchor: "install-maps"), class: "button button-light" %>
+    </div>
+  </section>
   <aside class="update-warning"><b>POWER SAFETY</b><p>Do not disconnect power while an update is running. Models, map packs, local indexes, databases and settings are stored outside Git and are never replaced by the updater.</p></aside>
 </main>
