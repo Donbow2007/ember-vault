@@ -10,13 +10,6 @@
         <div class="hero-actions"><%= link_to "ASK EMBER", assistant_path, class: "button button-light" %><%= link_to "OPEN MAPS", maps_path, class: "button button-ghost" %></div>
       </div>
     </section>
-    <section class="dashboard">
-      <div class="section-heading"><div><p class="section-index">01 // EMBER</p><h2>Local intelligence.<br><span>Stored with you.</span></h2></div></div>
-      <div class="module-grid">
-        <article class="module-card featured"><div class="module-topline"><span>AI</span><b><%= @ai_runtime.available? ? "READY" : "MODEL NEEDED" %></b></div><h3>Ember AI</h3><p>Ask survival, repair, preparedness, navigation, and field questions directly to the local model.</p><footer><span><%= @ai_runtime.profile.upcase %></span><%= link_to "ASK →", assistant_path %></footer></article>
-        <article class="module-card"><div class="module-topline"><span>MAP</span><b>OFFLINE</b></div><h3>Offline Maps</h3><p>Browse and search portable PMTiles map packs without an internet connection.</p><footer><span><%= pluralize(@map_count, "PACK") %></span><%= link_to "OPEN →", maps_path %></footer></article>
-      </div>
-    </section>
     <section class="system-strip" id="system">
       <div class="metric"><span>PORTABLE STORAGE</span><strong><%= number_to_human_size(@disk[:available]) %> FREE</strong><div><i style="width: <%= @disk[:percent] %>%"></i></div></div>
       <div class="metric system-theme"><span>DISPLAY MODE</span><strong><%= @theme.upcase %></strong><div class="system-theme-actions"><%= button_to "DARK", theme_setting_path, method: :patch, params: { theme: "dark" }, class: ("selected" if @theme == "dark") %><%= button_to "LIGHT", theme_setting_path, method: :patch, params: { theme: "light" }, class: ("selected" if @theme == "light") %></div></div>
