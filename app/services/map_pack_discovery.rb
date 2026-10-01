@@ -33,13 +33,13 @@ class MapPackDiscovery
       downloaded_bytes: pmtiles.size
     )
     pack
-  def catalog_id_for(metadata)
-    id = metadata["region"].to_s
-    MapCatalog.entries.any? { |entry| entry.id == id } ? id : nil
-  end
-
   rescue JSON::ParserError, KeyError, ArgumentError => error
     Rails.logger.warn("Ignoring invalid map pack #{manifest_path}: #{error.message}")
     nil
+  end
+
+  def catalog_id_for(metadata)
+    id = metadata["region"].to_s
+    MapCatalog.entries.any? { |entry| entry.id == id } ? id : nil
   end
 end
