@@ -4,6 +4,8 @@ class ModelsController < ApplicationController
   def index
     @models = ModelCatalog.entries
     @installed_ids = ModelCatalog.installed.map(&:id)
+    @active_model = ModelCatalog.active
+    @ai_running = @active_model.present? && LocalAiServer.new(entry: @active_model).running?
   end
 
   def install
@@ -33,6 +35,43 @@ class ModelsController < ApplicationController
     response.stream.write("data: #{ { error: error.message }.to_json }\n\n") rescue nil
   ensure
     response.stream.close
+  end
+
+  def select
+    model = ModelCatalog.select!(params[:id])
+    server = LocalAiServer.new(entry: model)
+    server.restart! if server.running?
+    redirect_to models_path, notice: "#{model.display_name} selected."
+  rescue StandardError => error
+    redirect_to models_path, alert: "Could not select model: #{error.message}"
+  end
+
+  def start_server
+    model = ModelCatalog.active
+    return redirect_to(models_path, alert: "Install and select a model first.") unless model
+
+    LocalAiServer.new(entry: model).start!
+    redirect_to models_path, notice: "AI server started with #{model.display_name}."
+  rescue StandardError => error
+    redirect_to models_path, alert: "AI server failed to start: #{error.message}"
+  end
+
+  def stop_server
+    model = ModelCatalog.active || ModelCatalog.installed.first
+    LocalAiServer.new(entry: model).stop! if model
+    redirect_to models_path, notice: "AI server stopped."
+  rescue StandardError => error
+    redirect_to models_path, alert: "AI server failed to stop: #{error.message}"
+  end
+
+  def shutdown
+    model = ModelCatalog.active || ModelCatalog.installed.first
+    LocalAiServer.new(entry: model).stop! if model
+    Thread.new do
+      sleep 0.5
+      Process.kill(Gem.win_platform? ? "KILL" : "TERM", Process.pid)
+    end
+    render plain: "Ember Vault is shutting down. You can close this browser tab."
   end
 
   def destroy
