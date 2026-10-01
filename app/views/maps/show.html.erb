@@ -5,7 +5,7 @@
 <% end %>
 <div class="atlas-shell" data-controller="atlas" data-atlas-url-value="<%= archive_map_path(@map_pack) %>" data-atlas-search-url-value="<%= search_map_path(@map_pack) %>" data-atlas-title-value="<%= @map_pack.title %>"<% if @selected_feature %> data-atlas-initial-latitude-value="<%= @selected_feature.latitude %>" data-atlas-initial-longitude-value="<%= @selected_feature.longitude %>" data-atlas-initial-name-value="<%= @selected_feature.name %>"<% end %>>
   <aside>
-    <%= link_to "← REGIONS", maps_path, class: "atlas-back" %>
+    <%= link_to "← REGIONS", maps_path, class: "atlas-back" %>\n    <%= link_to "＋ INSTALL MAPS", maps_path(anchor: "install-maps"), class: "atlas-back" %>
     <p class="section-index">WORLD ATLAS // LOCAL</p><h1><%= @map_pack.title %></h1>
     <p class="atlas-copy">Topographic vector map and geographic name index stored entirely on this node.</p>
     <button type="button" class="atlas-locate-button" data-action="click->atlas#locateDevice" data-atlas-target="locateButton">◎ LOCATE ME</button>
