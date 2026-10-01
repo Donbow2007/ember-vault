@@ -5,6 +5,22 @@
     <p class="section-note">One installed model is enough. Ember runs it locally and does not send questions to a cloud AI service.</p>
   </div>
   <% flash.each do |type, message| %><div class="flash <%= type %>"><%= message %></div><% end %>
+  <section class="runtime-controls">
+    <div>
+      <p class="section-index">RUNTIME // CONTROL</p>
+      <h3>AI server</h3>
+      <p><%= @active_model ? "Selected: #{@active_model.display_name}" : "No installed model selected." %></p>
+      <strong><%= @ai_running ? "RUNNING" : "STOPPED" %></strong>
+    </div>
+    <div class="runtime-actions">
+      <% if @ai_running %>
+        <%= button_to "STOP AI SERVER", stop_server_models_path, class: "button button-ghost" %>
+      <% elsif @active_model %>
+        <%= button_to "START AI SERVER", start_server_models_path, class: "button button-light" %>
+      <% end %>
+      <%= button_to "SHUT DOWN EMBER VAULT", shutdown_models_path, class: "button button-danger", data: { turbo_confirm: "Shut down Ember Vault and the local AI server?" } %>
+    </div>
+  </section>
   <div class="module-grid">
     <% @models.each_with_index do |model, index| %>
       <% installed = @installed_ids.include?(model.id) %>
@@ -14,6 +30,11 @@
         <p><%= installed ? "Stored on this portable drive and available to Ember." : "Download this GGUF model onto the portable drive while you have internet access." %></p>
         <div class="model-action">
           <% if installed %>
+            <% if @active_model&.id == model.id %>
+              <span class="model-active">ACTIVE MODEL</span>
+            <% else %>
+              <%= button_to "USE THIS MODEL", select_model_path(model.id), class: "button button-light" %>
+            <% end %>
             <%= button_to "REMOVE", model_path(model.id), method: :delete, class: "button button-ghost" %>
           <% elsif model.download_url.present? %>
             <%= button_to "INSTALL", install_model_path(model.id), class: "button button-light" %>
