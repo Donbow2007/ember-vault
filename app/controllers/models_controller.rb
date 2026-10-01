@@ -26,11 +26,11 @@ class ModelsController < ApplicationController
 
     ModelInstaller.new(model, progress: ->(downloaded, total) {
       percent = total.positive? ? ((downloaded.to_f / total) * 100).round : nil
-      response.stream.write("data: #{ { downloaded:, total:, percent: }.to_json }\\n\\n")
+      response.stream.write("data: #{ { downloaded:, total:, percent: }.to_json }\n\n")
     }).install!
-    response.stream.write("data: #{ { complete: true }.to_json }\\n\\n")
+    response.stream.write("data: #{ { complete: true }.to_json }\n\n")
   rescue StandardError => error
-    response.stream.write("data: #{ { error: error.message }.to_json }\\n\\n") rescue nil
+    response.stream.write("data: #{ { error: error.message }.to_json }\n\n") rescue nil
   ensure
     response.stream.close
   end
