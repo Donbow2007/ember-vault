@@ -36,6 +36,8 @@ if [ ! -L "$APP_ROOT/storage" ]; then
 fi
 
 export EMBER_VAULT_DATA_DIR="$DATA_ROOT"
+export BUNDLE_PATH="$APP_ROOT/vendor/bundle"
+mkdir -p "$BUNDLE_PATH"
 "$APP_ROOT/bin/ember-vault" setup
 
 cat > "$SERVICE_ROOT/ember-vault.service" <<EOF
@@ -47,6 +49,7 @@ After=network.target
 Type=simple
 WorkingDirectory=$APP_ROOT
 Environment=EMBER_VAULT_DATA_DIR=$DATA_ROOT
+Environment=BUNDLE_PATH=$APP_ROOT/vendor/bundle
 Environment=RAILS_MAX_THREADS=2
 Environment=JOB_CONCURRENCY=1
 ExecStart=$APP_ROOT/bin/ember-vault run
