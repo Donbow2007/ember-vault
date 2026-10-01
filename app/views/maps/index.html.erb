@@ -13,15 +13,13 @@
       <div class="atlas-region-grid">
         <% installed.each do |map| %>
           <article class="atlas-region-card">
-            <%= link_to map_path(map) do %>
-              <small>PMTILES // <%= number_to_human_size(map.byte_size) %></small>
-              <h2><%= map.title %></h2>
-              <p><%= pluralize(map.map_features.count, "INDEXED NAME") %></p>
-              <span>OPEN REGION →</span>
-            <% end %>
+            <small>PMTILES // <%= number_to_human_size(map.byte_size) %></small>
+            <h2><%= map.title %></h2>
+            <p><%= pluralize(map.map_features.count, "INDEXED NAME") %></p>
+            <%= link_to "OPEN REGION →", map_path(map), class: "button button-light atlas-open-region" %>
             <div class="atlas-pack-actions">
               <%= button_to "REINDEX", reindex_map_path(map), class: "button button-ghost" %>
-              <%= button_to "REMOVE", map_path(map), method: :delete, class: "button button-danger", form: { data: { turbo_confirm: "Remove #{map.title} from this device?" } } %>
+              <%= button_to "REMOVE", map_path(map), method: :delete, class: "button button-ghost", form: { data: { turbo_confirm: "Remove #{map.title} from this device? This permanently deletes the downloaded map and its local index." } } %>
             </div>
           </article>
         <% end %>
