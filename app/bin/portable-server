@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+require_relative "../config/boot"
+require "puma/cli"
+Puma::CLI.new(ARGV).run

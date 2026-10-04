@@ -4,6 +4,8 @@ require "open3"
 require "securerandom"
 require "socket"
 require "time"
+require "rbconfig"
+require_relative "runtime_paths"
 
 module EmberVault
   class Runtime
@@ -13,6 +15,7 @@ module EmberVault
     LOG_PATH = File.join(STORAGE_ROOT, "ember-vault.log")
     SECRET_PATH = File.join(STORAGE_ROOT, ".secret_key_base")
     UPDATE_LOCK_PATH = File.join(STORAGE_ROOT, ".update.lock")
+    URL_PATH = File.join(STORAGE_ROOT, "ember-vault.url")
     WEB_PORTS = [ 3000, 3100, 3200, 3300, 3400 ].freeze
 
     def initialize(output: $stdout)
@@ -36,26 +39,33 @@ module EmberVault
       ensure_secret
       run!(%w[bin/rails db:prepare], env: production_env)
       Dir.chdir(APP_ROOT) do
-        exec(production_env, "bin/rails", "server", "-e", "production", "-b", bind_address, "-p", port)
+        exec(production_env, *server_command)
       end
     end
 
     def start
-      return say("Ember Vault is already running as PID #{read_pid}.") if running?
+      if running?
+        location = File.file?(URL_PATH) ? File.read(URL_PATH).strip : "PID #{read_pid}"
+        return say("Ember Vault is already running at #{location}.")
+      end
 
       ensure_directories
       ensure_secret
       run!(%w[bin/rails db:prepare], env: production_env)
       log = File.open(LOG_PATH, "a")
       options = Gem.win_platform? ? { new_pgroup: true } : { pgroup: true }
-      pid = Process.spawn(production_env, "bin/rails", "server", "-e", "production", "-b", bind_address, "-p", port,
+      pid = Process.spawn(production_env, *server_command,
         chdir: APP_ROOT, out: log, err: log, **options)
       Process.detach(pid)
       File.write(PID_PATH, pid)
       say "Starting Ember Vault as PID #{pid}..."
-      raise "Ember Vault did not become healthy. Check #{LOG_PATH}." unless wait_for_health
+      unless wait_for_health
+        stop
+        raise "Ember Vault did not become healthy. Check #{LOG_PATH}."
+      end
 
-      say "Ember Vault is ready at http://#{display_host}:#{port}."
+      File.write(URL_PATH, "http://#{display_host}:#{port}\n")
+      say "Ember Vault is ready at #{File.read(URL_PATH).strip}."
     end
 
     def stop
@@ -68,9 +78,11 @@ module EmberVault
         sleep 0.1
       end
       Process.kill("KILL", pid) if process_alive?(pid)
+      FileUtils.rm_f(URL_PATH)
       FileUtils.rm_f(PID_PATH)
       say "Ember Vault stopped."
     rescue Errno::ESRCH
+      FileUtils.rm_f(URL_PATH)
       FileUtils.rm_f(PID_PATH)
       say "Ember Vault was already stopped."
     end
@@ -161,6 +173,18 @@ module EmberVault
       ENV["EMBER_VAULT_BUNDLED_RUNTIME"] == "1"
     end
 
+    def server_command
+      if bundled_runtime?
+        [ ruby_binary, "bin/portable-server", "-e", "production", "-C", "config/puma.rb", "-b", "tcp://#{bind_address}:#{port}", "config.ru" ]
+      else
+        [ ruby_binary, "bin/rails", "server", "-e", "production", "-b", bind_address, "-p", port ]
+      end
+    end
+
+    def ruby_binary
+      bundled_runtime? ? RuntimePaths.executable("ruby") : RbConfig.ruby
+    end
+
     def bundle_path
       configured = ENV["BUNDLE_PATH"]
       return configured unless configured.to_s.empty?
@@ -235,6 +259,7 @@ module EmberVault
 
     def run!(command, env: {})
       say "==> #{command.join(" ")}"
+      command = [ ruby_binary, *command ] if bundled_runtime? && command.first == "bin/rails"
       system(bundle_env.merge(env), *command, chdir: APP_ROOT, exception: false).tap do |success|
         raise "Command failed: #{command.join(" ")}" unless success
       end
@@ -269,6 +294,7 @@ module EmberVault
     def wait_for_health
       60.times do
         return true if healthy?
+        return false unless running?
         sleep 0.5
       end
       false

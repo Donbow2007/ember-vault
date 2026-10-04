@@ -5,6 +5,10 @@ class MapIndexer
   SCRIPT = Rails.root.join("vendor", "map_indexer", "index.js")
   MODULES = Rails.root.join("vendor", "map_indexer", "node_modules")
 
+  def self.node_binary
+    EmberVault::RuntimePaths.executable("node", root: Rails.root.to_s)
+  end
+
   def initialize(map_pack)
     @map_pack = map_pack
   end
@@ -14,7 +18,7 @@ class MapIndexer
     stored = Pathname.new(@map_pack.stored_path)
     path = (stored.absolute? ? stored : root.join(stored)).cleanpath
     features = []
-    Open3.popen3({ "NODE_PATH" => MODULES.to_s }, "node", SCRIPT.to_s, path.to_s) do |stdin, stdout, stderr, thread|
+    Open3.popen3({ "NODE_PATH" => MODULES.to_s }, self.class.node_binary, SCRIPT.to_s, path.to_s) do |stdin, stdout, stderr, thread|
       stdin.close
       stdout.each_line { |line| features << JSON.parse(line, symbolize_names: true) }
       error = stderr.read

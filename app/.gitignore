@@ -1,0 +1,18 @@
+
+# Local portable runtime build artifacts
+/portable/runtime/
+/portable/data/
+/.bundle/
+/tmp/cache/
+
+/dist/
+/vendor/map_indexer/node_modules/
+/public/assets/
+/log/*
+/tmp/*
+/storage/*
+/config/master.key
+/config/credentials/*.key
+/.env*
+
+**/__pycache__/

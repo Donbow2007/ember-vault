@@ -4,6 +4,8 @@ Ember Vault is a portable, offline-first Rails application built around two capa
 
 There is no Kiwix, ZIM, document archive, RAG, cloud AI, telemetry, or required internet connection at runtime.
 
+For the Linux x64 portable archive, follow [the ext4 USB instructions and compatibility details](docs/linux-portable.md).
+
 ## Installation — computer or USB drive
 
 Ember Vault 2 is designed to be self-contained. A finished portable release does **not** require Ruby, Bundler, Node, Homebrew, WSL, Python, CMake, Git, or llama.cpp to be installed on the target computer.

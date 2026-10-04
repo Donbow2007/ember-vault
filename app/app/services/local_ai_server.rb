@@ -35,8 +35,17 @@ class LocalAiServer
     return true if healthy?
 
     stop!
-    start
-    wait_until_ready
+    begin
+      start
+      wait_until_ready
+    rescue LocalAiRuntime::Error, SystemCallError => error
+      raise unless gpu_layers == "999"
+      stop!
+      @cpu_only = true
+      File.open(log_path, "a") { |log| log.puts("GPU startup failed (#{error.message}); retrying CPU-only.") }
+      start
+      wait_until_ready
+    end
   end
 
   def stop!
@@ -100,11 +109,15 @@ class LocalAiServer
   end
 
   def gpu_layers
+    return "0" if @cpu_only
+
     ENV.fetch("EMBER_VAULT_GPU_LAYERS", "auto") == "auto" ? "999" : ENV.fetch("EMBER_VAULT_GPU_LAYERS")
   end
 
   def executable
     @executable ||= begin
+      return EmberVault::RuntimePaths.executable("llama-server", root: Rails.root.to_s) if ENV["EMBER_VAULT_BUNDLED_RUNTIME"] == "1"
+
       configured = ENV["LLAMA_SERVER_PATH"].presence
       name = Gem.win_platform? ? "llama-server.exe" : "llama-server"
       bundled = Rails.root.join("vendor", "llama.cpp", "build", "bin", name)
@@ -155,6 +168,7 @@ class LocalAiServer
   def wait_until_ready
     deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + START_TIMEOUT
     until healthy?
+      raise LocalAiRuntime::Error, "llama-server exited; see #{log_path}" unless process_alive?(stored_pid)
       raise LocalAiRuntime::Error, "llama-server failed to start; see #{log_path}" if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
       sleep 0.25
     end
